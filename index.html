@@ -789,18 +789,36 @@
     switchEventDate(today());
   }
 
+  let autoSaveTimer = null;
+
+  function triggerAutoSave() {
+    saveWorkingDraft();
+    updateDateStatusBadge('saving');
+
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+      saveCurrentData(true);
+    }, 800);
+  }
+
   function onEventTitleChange(val) {
     state.note = val;
-    saveWorkingDraft();
+    triggerAutoSave();
   }
 
   function updateDateStatusBadge(type) {
     const badge = document.getElementById('date-status-badge');
     if (!badge) return;
     if (type === 'saved') {
-      badge.textContent = '💾 登録済みイベント';
-      badge.style.background = 'rgba(59,130,246,0.15)';
-      badge.style.color = 'var(--info)';
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      badge.textContent = `💾 自動保存済み (${timeStr})`;
+      badge.style.background = 'rgba(16,185,129,0.15)';
+      badge.style.color = 'var(--success)';
+    } else if (type === 'saving') {
+      badge.textContent = '📝 自動保存中...';
+      badge.style.background = 'rgba(245,158,11,0.15)';
+      badge.style.color = 'var(--accent)';
     } else {
       badge.textContent = state.date === today() ? '✨ 今日のイベント' : '📝 新規イベント作成中';
       badge.style.background = 'rgba(16,185,129,0.15)';
@@ -1373,18 +1391,18 @@
     const el = document.getElementById(`${field}-${idx}`);
     if (el) el.value = state.rows[idx][field];
     recalc();
-    saveWorkingDraft();
+    triggerAutoSave();
   }
 
   function updateVal(idx, field, val) {
     state.rows[idx][field] = Math.max(0, parseFloat(val) || 0);
     recalc();
-    saveWorkingDraft();
+    triggerAutoSave();
   }
 
   function updateRowName(idx, val) {
     state.rows[idx].name = val;
-    saveWorkingDraft();
+    triggerAutoSave();
   }
 
   function addRow(type) {
@@ -1397,14 +1415,14 @@
     });
     renderTable();
     recalc();
-    saveWorkingDraft();
+    triggerAutoSave();
   }
 
   function deleteRow(idx) {
     state.rows.splice(idx, 1);
     renderTable();
     recalc();
-    saveWorkingDraft();
+    triggerAutoSave();
   }
 
   function clearAllInputs() {
@@ -1413,11 +1431,9 @@
       r.onsite = 0;
       r.stream = 0;
     });
-    const noteEl = document.getElementById('save-note');
-    if (noteEl) noteEl.value = '';
     renderTable();
     recalc();
-    saveWorkingDraft();
+    triggerAutoSave();
     showToast('🗑️ すべての枚数を 0 にクリアしました', 'ok');
   }
 
@@ -1436,11 +1452,9 @@
     config = Object.assign({}, DEFAULT_CONFIG);
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
     applyConfigToUI();
-    const noteEl = document.getElementById('save-note');
-    if (noteEl) noteEl.value = '';
     renderTable();
     recalc();
-    saveWorkingDraft();
+    triggerAutoSave();
     showToast('🔄 演者名を空欄にして完全リセットしました', 'ok');
   }
 
@@ -1583,8 +1597,11 @@
   }
 
   // ─── Save & Daily Event Management ───────────────────
-  function saveCurrentData() {
-    if (!state.date) { showToast('開催日を入力してください', 'ok'); return; }
+  function saveCurrentData(silent = false) {
+    if (!state.date) {
+      if (!silent) showToast('開催日を入力してください', 'ok');
+      return;
+    }
     const titleEl = document.getElementById('event-title');
     const note = titleEl ? titleEl.value.trim() : (state.note || '');
     state.note = note;
@@ -1624,7 +1641,9 @@
     saveWorkingDraft();
     updatePerformerMasterDatalist();
     CloudSync.push();
-    showToast(`💾 ${state.date} のイベントを保存し、クラウド同期しました！`, 'ok');
+    if (!silent) {
+      showToast(`💾 ${state.date} のイベントを保存・同期しました！`, 'ok');
+    }
   }
 
   function renderHistory() {
