@@ -627,17 +627,16 @@
     equipInTotal: false             // 機材費をチャージ計に含めるか
   };
 
-  // ─── Default Rows (8/14 NEPO standard format) ────────
+  // ─── Default Rows (Clean Blank Format) ──────────────
   const STANDARD_ROWS = [
-    { name: 'Garbage Garden', onsite: 0, stream: 2, isPerformer: true },
-    { name: 'MoMu ＆ TeaSteam', onsite: 4.5, stream: 6, isPerformer: true },
-    { name: 'ELEMAYU', onsite: 0, stream: 4, isPerformer: true },
-    { name: 'MakotoAI', onsite: 3, stream: 5.5, isPerformer: true },
-    { name: 'Chronoconnex', onsite: 2.5, stream: 4, isPerformer: true },
-    { name: 'LUCY', onsite: 3, stream: 2.5, isPerformer: true },
-    { name: 'miya', onsite: 2, stream: 0, isPerformer: false },
-    { name: 'イベント全体', onsite: 5, stream: 1, isPerformer: false },
-    { name: 'お目当て不明', onsite: 0, stream: 3, isPerformer: false }
+    { name: '', onsite: 0, stream: 0, isPerformer: true },
+    { name: '', onsite: 0, stream: 0, isPerformer: true },
+    { name: '', onsite: 0, stream: 0, isPerformer: true },
+    { name: '', onsite: 0, stream: 0, isPerformer: true },
+    { name: '', onsite: 0, stream: 0, isPerformer: true },
+    { name: 'miya', onsite: 0, stream: 0, isPerformer: false },
+    { name: 'イベント全体', onsite: 0, stream: 0, isPerformer: false },
+    { name: 'お目当て不明', onsite: 0, stream: 0, isPerformer: false }
   ];
 
   // ─── Tier Definitions ────────────────────────────────
