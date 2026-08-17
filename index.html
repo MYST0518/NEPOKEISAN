@@ -291,6 +291,14 @@
     </div>
     <div class="settings-grid">
       <div class="field">
+        <label>ノルマ適用方式</label>
+        <select id="cfg-norma-mode" onchange="updateConfig()">
+          <option value="onsite_only" selected>現地のみノルマ（配信は1枚目からバック）</option>
+          <option value="each">現地・配信それぞれにノルマ設定</option>
+          <option value="combined">現地＋配信の合計でノルマ判定</option>
+        </select>
+      </div>
+      <div class="field">
         <label>リアルチケット単価 (¥)</label>
         <input type="number" id="cfg-price-onsite" value="2500" step="100" onchange="updateConfig()">
       </div>
@@ -299,12 +307,12 @@
         <input type="number" id="cfg-price-stream" value="2000" step="100" onchange="updateConfig()">
       </div>
       <div class="field">
-        <label>リアルノルマ枚数 (何枚目からバック)</label>
+        <label>現地ノルマ (何枚目からバック)</label>
         <input type="number" id="cfg-norma-onsite" value="3" step="1" title="3なら3枚目から50%バック (2枚引かれる)" onchange="updateConfig()">
       </div>
-      <div class="field">
-        <label>配信ノルマ枚数 (何枚目からバック)</label>
-        <input type="number" id="cfg-norma-stream" value="3" step="1" title="3なら3枚目から50%バック (2枚引かれる)" onchange="updateConfig()">
+      <div class="field" id="cfg-field-norma-stream">
+        <label>配信ノルマ (何枚目からバック)</label>
+        <input type="number" id="cfg-norma-stream" value="1" step="1" title="1なら1枚目からバック(ノルマなし)" onchange="updateConfig()">
       </div>
       <div class="field">
         <label>演者バック率 (%)</label>
@@ -468,10 +476,11 @@
 <script>
   // ─── Default Configuration ──────────────────────────
   const DEFAULT_CONFIG = {
+    normaMode: 'onsite_only', // 'onsite_only' (現地のみ3枚目から), 'each', 'combined'
     priceOnsite: 2500,
     priceStream: 2000,
-    normaOnsite: 3,       // 3枚目からバック (2枚引かれる)
-    normaStream: 3,       // 3枚目からバック (2枚引かれる)
+    normaOnsite: 3,       // 現地は3枚目からバック (2枚引かれる)
+    normaStream: 1,       // 配信は1枚目からバック (ノルマなし)
     perfBackRate: 0.5,    // 50%
     equipFeePerBand: 5000,// 1組あたり機材費
     equipInTotal: true    // 機材費をチャージ計に含めるか
@@ -545,6 +554,7 @@
   }
 
   function applyConfigToUI() {
+    document.getElementById('cfg-norma-mode').value = config.normaMode || 'onsite_only';
     document.getElementById('cfg-price-onsite').value = config.priceOnsite;
     document.getElementById('cfg-price-stream').value = config.priceStream;
     document.getElementById('cfg-norma-onsite').value = config.normaOnsite;
@@ -556,9 +566,21 @@
     document.querySelectorAll('.unit-price-onsite').forEach(el => el.textContent = `¥${fmt(config.priceOnsite)}`);
     document.querySelectorAll('.unit-price-stream').forEach(el => el.textContent = `¥${fmt(config.priceStream)}`);
     document.getElementById('s-equip-unit').textContent = fmt(config.equipFeePerBand);
+
+    // Update table meta description
+    let metaText = `リアル ¥${fmt(config.priceOnsite)} / 配信 ¥${fmt(config.priceStream)}`;
+    if (config.normaMode === 'onsite_only') {
+      metaText += ` ｜ 現地${config.normaOnsite}枚目から${Math.round(config.perfBackRate*100)}%バック（配信はノルマなし）`;
+    } else if (config.normaMode === 'each') {
+      metaText += ` ｜ 現地${config.normaOnsite}枚目・配信${config.normaStream}枚目から${Math.round(config.perfBackRate*100)}%バック`;
+    } else {
+      metaText += ` ｜ 合計${config.normaOnsite}枚目から${Math.round(config.perfBackRate*100)}%バック`;
+    }
+    document.getElementById('table-summary-meta').textContent = metaText;
   }
 
   function updateConfig() {
+    config.normaMode = document.getElementById('cfg-norma-mode').value;
     config.priceOnsite = Math.max(0, parseInt(document.getElementById('cfg-price-onsite').value) || 0);
     config.priceStream = Math.max(0, parseInt(document.getElementById('cfg-price-stream').value) || 0);
     config.normaOnsite = Math.max(0, parseFloat(document.getElementById('cfg-norma-onsite').value) || 0);
@@ -574,7 +596,7 @@
   }
 
   function resetConfigToDefault() {
-    if (!confirm('設定をNEPO標準の初期状態に戻しますか？')) return;
+    if (!confirm('設定を初期状態に戻しますか？')) return;
     config = Object.assign({}, DEFAULT_CONFIG);
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
     applyConfigToUI();
@@ -639,23 +661,46 @@
     return list.findIndex(t => totalSales >= t.min && totalSales < t.max);
   }
 
-  // ─── Performer Calculation (PDF Exact Match) ──────────
-  // Rule: "3枚目から50%バック" -> (枚数 - 2) * 単価 * 50%
+  // ─── Performer Calculation ───────────────────────────
   function calcPerformer(r) {
     if (!r.isPerformer) {
       return { realBack: 0, streamBack: 0, totalBack: 0, equipFee: 0, netSettlement: 0 };
     }
 
-    const onsiteDeduct = Math.max(0, config.normaOnsite - 1);
-    const streamDeduct = Math.max(0, config.normaStream - 1);
+    let realBack = 0;
+    let streamBack = 0;
 
-    const eligibleOnsite = Math.max(0, (r.onsite || 0) - onsiteDeduct);
-    const eligibleStream = Math.max(0, (r.stream || 0) - streamDeduct);
+    if (config.normaMode === 'onsite_only') {
+      // 現地のみノルマ（例: 3枚目から50%バック -> 2枚控除）
+      const onsiteDeduct = Math.max(0, config.normaOnsite - 1);
+      const eligibleOnsite = Math.max(0, (r.onsite || 0) - onsiteDeduct);
+      realBack = eligibleOnsite * config.priceOnsite * config.perfBackRate;
+      // 配信はノルマなし（全枚数がバック対象）
+      streamBack = (r.stream || 0) * config.priceStream * config.perfBackRate;
+    } else if (config.normaMode === 'each') {
+      // 現地・配信それぞれにノルマ
+      const onsiteDeduct = Math.max(0, config.normaOnsite - 1);
+      const streamDeduct = Math.max(0, config.normaStream - 1);
+      const eligibleOnsite = Math.max(0, (r.onsite || 0) - onsiteDeduct);
+      const eligibleStream = Math.max(0, (r.stream || 0) - streamDeduct);
+      realBack = eligibleOnsite * config.priceOnsite * config.perfBackRate;
+      streamBack = eligibleStream * config.priceStream * config.perfBackRate;
+    } else {
+      // 合計枚数でノルマ判定
+      const totalCount = (r.onsite || 0) + (r.stream || 0);
+      const deduct = Math.max(0, config.normaOnsite - 1);
+      if (totalCount > deduct) {
+        // 現地優先でノルマ消化
+        const remainingNorma = deduct;
+        const onsiteUsedForNorma = Math.min(r.onsite || 0, remainingNorma);
+        const streamUsedForNorma = Math.min(r.stream || 0, remainingNorma - onsiteUsedForNorma);
+        realBack = Math.max(0, (r.onsite || 0) - onsiteUsedForNorma) * config.priceOnsite * config.perfBackRate;
+        streamBack = Math.max(0, (r.stream || 0) - streamUsedForNorma) * config.priceStream * config.perfBackRate;
+      }
+    }
 
-    const realBack   = eligibleOnsite * config.priceOnsite * config.perfBackRate;
-    const streamBack = eligibleStream * config.priceStream * config.perfBackRate;
-    const totalBack  = realBack + streamBack;
-    const equipFee   = config.equipFeePerBand;
+    const totalBack = realBack + streamBack;
+    const equipFee = config.equipFeePerBand;
     const netSettlement = totalBack - equipFee;
 
     return { realBack, streamBack, totalBack, equipFee, netSettlement };
