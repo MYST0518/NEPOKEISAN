@@ -536,12 +536,19 @@
   <!-- ④ Save & History -->
   <section class="card">
     <div class="card-head">
-      <span class="card-title">💾 データの保存と履歴</span>
-      <span class="card-meta" id="history-count">0件保存済み</span>
+      <span class="card-title">💾 データの保存と履歴一覧</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="card-meta" id="history-count">0件保存済み</span>
+        <button class="toggle-btn" onclick="exportBackupJSON()" title="保存履歴をJSONファイルとしてダウンロード">📤 バックアップ保存</button>
+        <label class="toggle-btn" style="cursor:pointer;" title="JSONファイルから履歴を復元">
+          📥 ファイル復元
+          <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importBackupJSON(event)">
+        </label>
+      </div>
     </div>
     <div class="card-body">
       <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
-        <input type="text" id="save-note" placeholder="メモ（例：NEPO本番）" style="flex:1; min-width:200px;">
+        <input type="text" id="save-note" placeholder="メモ（例：NEPO本番 Aフロア）" style="flex:1; min-width:200px;">
         <button class="btn btn-primary" onclick="saveCurrentData()">💾 この日の精算データを保存</button>
       </div>
 
@@ -602,25 +609,61 @@
     ]
   };
 
-  const STORAGE_KEY_SAVED  = 'nepo_calc_saved_v3';
-  const STORAGE_KEY_CONFIG = 'nepo_calc_config_v3';
+  const STORAGE_KEY_SAVED   = 'nepo_calc_saved_v3';
+  const STORAGE_KEY_CONFIG  = 'nepo_calc_config_v3';
+  const STORAGE_KEY_CURRENT = 'nepo_calc_current_draft_v3';
 
   // ─── State ───────────────────────────────────────────
   let config = loadConfig();
-  let state = {
-    date: today(),
-    dayOverride: 'auto',
-    rows: JSON.parse(JSON.stringify(STANDARD_ROWS)),
-    saved: loadSaved()
-  };
+  let state = loadWorkingState();
+
+  function loadWorkingState() {
+    try {
+      const draft = JSON.parse(localStorage.getItem(STORAGE_KEY_CURRENT));
+      if (draft && draft.rows && draft.rows.length) {
+        return {
+          date: draft.date || today(),
+          dayOverride: draft.dayOverride || 'auto',
+          note: draft.note || '',
+          rows: draft.rows,
+          saved: loadSaved()
+        };
+      }
+    } catch {}
+    return {
+      date: today(),
+      dayOverride: 'auto',
+      note: '',
+      rows: JSON.parse(JSON.stringify(STANDARD_ROWS)),
+      saved: loadSaved()
+    };
+  }
+
+  function saveWorkingDraft() {
+    try {
+      const noteEl = document.getElementById('save-note');
+      const draft = {
+        date: state.date,
+        dayOverride: state.dayOverride,
+        note: noteEl ? noteEl.value : '',
+        rows: state.rows
+      };
+      localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(draft));
+    } catch {}
+  }
 
   // ─── Init ────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('event-date').value = state.date;
+    document.getElementById('day-override').value = state.dayOverride || 'auto';
+    const noteEl = document.getElementById('save-note');
+    if (noteEl && state.note) noteEl.value = state.note;
+
     document.getElementById('event-date').addEventListener('change', e => {
       state.date = e.target.value;
       updateDayInfo();
       recalc();
+      saveWorkingDraft();
     });
 
     applyConfigToUI();
@@ -1001,15 +1044,18 @@
     const el = document.getElementById(`${field}-${idx}`);
     if (el) el.value = state.rows[idx][field];
     recalc();
+    saveWorkingDraft();
   }
 
   function updateVal(idx, field, val) {
     state.rows[idx][field] = Math.max(0, parseFloat(val) || 0);
     recalc();
+    saveWorkingDraft();
   }
 
   function updateRowName(idx, val) {
     state.rows[idx].name = val;
+    saveWorkingDraft();
   }
 
   function addRow(type) {
@@ -1022,12 +1068,14 @@
     });
     renderTable();
     recalc();
+    saveWorkingDraft();
   }
 
   function deleteRow(idx) {
     state.rows.splice(idx, 1);
     renderTable();
     recalc();
+    saveWorkingDraft();
   }
 
   function clearAllInputs() {
@@ -1040,6 +1088,7 @@
     if (noteEl) noteEl.value = '';
     renderTable();
     recalc();
+    saveWorkingDraft();
     showToast('🗑️ すべての枚数を 0 にクリアしました', 'ok');
   }
 
@@ -1058,6 +1107,7 @@
     if (noteEl) noteEl.value = '';
     renderTable();
     recalc();
+    saveWorkingDraft();
     showToast('🔄 初期状態に完全リセットしました', 'ok');
   }
 
@@ -1066,6 +1116,7 @@
     state.rows = JSON.parse(JSON.stringify(STANDARD_ROWS));
     renderTable();
     recalc();
+    saveWorkingDraft();
     showToast('標準リストにリセットしました', 'ok');
   }
 
@@ -1087,6 +1138,7 @@
         miyaRate: calc.miyaRate,
         totalBack: calc.totalBack,
         perfBackTotal: calc.perfBackTotal,
+        perfPenaltyTotal: calc.perfPenaltyTotal,
         miyaBack: calc.miyaBack,
         venueNet: calc.venueNet
       }
@@ -1094,15 +1146,15 @@
 
     const existIdx = state.saved.findIndex(e => e.date === state.date);
     if (existIdx >= 0) {
-      if (!confirm(`${state.date} のデータは既に存在します。上書きしますか？`)) return;
+      if (!confirm(`${state.date} のデータは既に保存されています。上書きしますか？`)) return;
       state.saved[existIdx] = entry;
     } else {
       state.saved.unshift(entry);
     }
 
-    localStorage.setItem(STORAGE_KEY_SAVED, JSON.stringify(state.saved));
-    document.getElementById('save-note').value = '';
+    persistSaved();
     renderHistory();
+    saveWorkingDraft();
     showToast('💾 データを保存しました！', 'ok');
   }
 
@@ -1111,18 +1163,22 @@
     document.getElementById('history-count').textContent = `${state.saved.length}件保存済み`;
 
     if (!state.saved.length) {
-      container.innerHTML = '<div style="color:var(--text-faint); text-align:center; padding:20px;">まだ履歴はありません</div>';
+      container.innerHTML = '<div style="color:var(--text-faint); text-align:center; padding:24px 10px;">まだ保存された履歴はありません。「💾 この日の精算データを保存」を押すとここに一覧化されます。</div>';
       return;
     }
 
     container.innerHTML = '';
     state.saved.forEach((ev, idx) => {
+      const d = ev.date ? new Date(ev.date + 'T12:00:00') : null;
+      const days = ['日','月','火','水','木','金','土'];
+      const dayText = d ? `（${days[d.getDay()]}）` : '';
+
       const card = document.createElement('div');
       card.className = 'hcard';
       card.innerHTML = `
         <div class="hcard-head" onclick="this.parentElement.classList.toggle('open')">
           <div>
-            <strong>${ev.date}</strong>
+            <strong>${ev.date}${dayText}</strong>
             ${ev.note ? `<span style="color:var(--text-muted); font-size:12px; margin-left:8px;">${esc(ev.note)}</span>` : ''}
           </div>
           <div style="font-family:var(--font-mono); font-weight:700; color:var(--accent);">
@@ -1130,13 +1186,22 @@
           </div>
         </div>
         <div class="hcard-body">
-          <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:12px;">
-            <span>演者バック: ¥${fmt(ev.results.perfBackTotal)}</span>
-            <span style="color:var(--accent); font-weight:700;">miyaさんバック: ¥${fmt(ev.results.miyaBack)}</span>
-            <span>会場手残り: ¥${fmt(ev.results.venueNet)}</span>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:12px; font-size:12px;">
+            <div style="background:var(--card); padding:8px; border-radius:6px; border:1px solid var(--border);">
+              <div style="font-size:10px; color:var(--text-faint);">演者バック</div>
+              <div style="font-weight:700; color:var(--success);">¥${fmt(ev.results.perfBackTotal)}</div>
+            </div>
+            <div style="background:var(--card); padding:8px; border-radius:6px; border:1px solid var(--border);">
+              <div style="font-size:10px; color:var(--text-faint);">@miyaバック (${Math.round((ev.results.miyaRate||0)*100)}%)</div>
+              <div style="font-weight:700; color:var(--accent);">¥${fmt(ev.results.miyaBack)}</div>
+            </div>
+            <div style="background:var(--card); padding:8px; border-radius:6px; border:1px solid var(--border);">
+              <div style="font-size:10px; color:var(--text-faint);">会場手残り</div>
+              <div style="font-weight:700;">¥${fmt(ev.results.venueNet)}</div>
+            </div>
           </div>
           <div style="display:flex; justify-content:flex-end; gap:8px;">
-            <button class="btn btn-secondary" onclick="loadSavedEvent(${idx})">📥 読み込む</button>
+            <button class="btn btn-secondary" onclick="loadSavedEvent(${idx})">📥 画面に読み込む</button>
             <button class="btn btn-danger-ghost" onclick="deleteSavedEvent(${idx})">🗑 削除</button>
           </div>
         </div>
@@ -1157,24 +1222,109 @@
     }
     document.getElementById('event-date').value = state.date;
     document.getElementById('day-override').value = state.dayOverride;
+    const noteEl = document.getElementById('save-note');
+    if (noteEl) noteEl.value = ev.note || '';
+
     updateDayInfo();
     renderTable();
     recalc();
+    saveWorkingDraft();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    showToast('📥 データを復元しました', 'ok');
+    showToast(`📥 ${ev.date} のデータを復元しました`, 'ok');
   }
 
   function deleteSavedEvent(idx) {
-    if (!confirm('この履歴を削除しますか？')) return;
+    const ev = state.saved[idx];
+    if (!confirm(`${ev ? ev.date : ''} の保存履歴を削除しますか？`)) return;
     state.saved.splice(idx, 1);
-    localStorage.setItem(STORAGE_KEY_SAVED, JSON.stringify(state.saved));
+    persistSaved();
     renderHistory();
     showToast('削除しました', 'ok');
   }
 
   function loadSaved() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_SAVED)) || []; }
-    catch { return []; }
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY_SAVED)) || [];
+    } catch { return []; }
+  }
+
+  function persistSaved() {
+    try {
+      localStorage.setItem(STORAGE_KEY_SAVED, JSON.stringify(state.saved));
+    } catch (e) {
+      showToast('⚠️ 容量不足などで保存できませんでした', 'err');
+    }
+  }
+
+  // ─── JSON Backup Export / Import ─────────────────────
+  function exportBackupJSON() {
+    const backupData = {
+      version: 3,
+      exportedAt: new Date().toISOString(),
+      config: config,
+      saved: state.saved,
+      currentDraft: {
+        date: state.date,
+        dayOverride: state.dayOverride,
+        rows: state.rows
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const todayStr = today().replace(/-/g, '');
+    a.href = url;
+    a.download = `nepo_keisan_backup_${todayStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('📤 バックアップファイルを保存しました', 'ok');
+  }
+
+  function importBackupJSON(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data || !data.saved) {
+          throw new Error('バックアップ形式が無効です');
+        }
+        if (!confirm(`バックアップファイルを復元しますか？\n（履歴 ${data.saved.length}件 が読み込まれます）`)) return;
+
+        state.saved = data.saved;
+        persistSaved();
+
+        if (data.config) {
+          config = Object.assign({}, DEFAULT_CONFIG, data.config);
+          localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+          applyConfigToUI();
+        }
+
+        if (data.currentDraft && data.currentDraft.rows) {
+          state.date = data.currentDraft.date || today();
+          state.dayOverride = data.currentDraft.dayOverride || 'auto';
+          state.rows = data.currentDraft.rows;
+          document.getElementById('event-date').value = state.date;
+          document.getElementById('day-override').value = state.dayOverride;
+          updateDayInfo();
+          renderTable();
+          recalc();
+          saveWorkingDraft();
+        }
+
+        renderHistory();
+        showToast('📥 バックアップから完全復元しました！', 'ok');
+      } catch (err) {
+        alert('ファイルの読み込みに失敗しました：' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // reset file input
   }
 
   // ─── Utils ───────────────────────────────────────────
