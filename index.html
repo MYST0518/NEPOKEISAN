@@ -372,7 +372,10 @@
   <section class="card">
     <div class="card-head">
       <span class="card-title">🎟️ チケット枚数内訳</span>
-      <span class="card-meta" id="table-summary-meta">リアル ¥2,500 / 配信 ¥2,000 (3枚目から50%バック)</span>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span class="card-meta" id="table-summary-meta">リアル ¥2,500 / 配信 ¥2,000</span>
+        <button class="btn btn-danger-ghost" style="padding:4px 10px; font-size:11px;" onclick="clearAllInputs()">🗑️ チケット枚数リセット</button>
+      </div>
     </div>
 
     <div class="table-scroll">
@@ -396,7 +399,7 @@
     <div class="table-actions">
       <button class="btn btn-secondary" onclick="addRow('performer')">＋ 出演者を追加</button>
       <button class="btn btn-secondary" onclick="addRow('general')">＋ 一般枠を追加 (miya / 全体 / 不明等)</button>
-      <button class="btn btn-danger-ghost" onclick="clearAllInputs()">🗑️ 枚数を全部0にクリア</button>
+      <button class="btn btn-danger-ghost" onclick="clearAllInputs()">🗑️ チケット枚数リセット</button>
       <button class="btn btn-secondary" style="margin-left:auto;" onclick="fullResetAll()">🔄 完全リセット（初期化）</button>
     </div>
   </section>
