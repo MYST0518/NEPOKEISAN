@@ -977,7 +977,7 @@
         <td>
           <div class="pname-wrap">
             ${catBadge}
-            <input type="text" class="pname-input" list="performer-master-list" value="${esc(r.name)}" oninput="updateRowName(${idx}, this.value)">
+            <input type="text" class="pname-input" list="performer-master-list" placeholder="${r.isPerformer ? '出演者名を入力' : '一般枠名'}" value="${esc(r.name)}" oninput="updateRowName(${idx}, this.value)">
           </div>
         </td>
         <td>
@@ -1115,7 +1115,7 @@
   function addRow(type) {
     const isPerformer = type === 'performer';
     state.rows.push({
-      name: isPerformer ? '新規出演者' : '一般枠',
+      name: isPerformer ? '' : '一般枠',
       onsite: 0,
       stream: 0,
       isPerformer: isPerformer
@@ -1147,13 +1147,17 @@
   }
 
   function fullResetAll() {
-    if (!confirm('完全リセットしますか？\n出演者リスト・入力枚数・設定が初期状態に戻ります。')) return;
-    state.rows = JSON.parse(JSON.stringify(STANDARD_ROWS)).map(r => ({
-      name: r.name,
-      onsite: 0,
-      stream: 0,
-      isPerformer: r.isPerformer
-    }));
+    if (!confirm('完全リセットしますか？\n出演者名・枚数・設定がすべてリセットされ、演者名は空欄になります。')) return;
+    state.rows = [
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: 'miya', onsite: 0, stream: 0, isPerformer: false },
+      { name: 'イベント全体', onsite: 0, stream: 0, isPerformer: false },
+      { name: 'お目当て不明', onsite: 0, stream: 0, isPerformer: false }
+    ];
     config = Object.assign({}, DEFAULT_CONFIG);
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
     applyConfigToUI();
@@ -1162,7 +1166,7 @@
     renderTable();
     recalc();
     saveWorkingDraft();
-    showToast('🔄 初期状態に完全リセットしました', 'ok');
+    showToast('🔄 演者名を空欄にして完全リセットしました', 'ok');
   }
 
   function resetToStandardNEPO() {
