@@ -415,30 +415,45 @@
     </div>
   </section>
 
-  <!-- ① Event setup -->
+  <!-- ① Event setup & Date Navigation -->
   <section class="card">
     <div class="card-head">
-      <span class="card-title">📅 イベント設定</span>
-      <span class="card-meta" id="current-tier-info">判定: —</span>
+      <span class="card-title">📅 イベント日・出演者登録</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span id="date-status-badge" style="font-size:11px; padding:2px 8px; border-radius:4px; font-weight:700; background:rgba(16,185,129,0.15); color:var(--success);">✨ 今日のイベント</span>
+        <span class="card-meta" id="current-tier-info">判定: —</span>
+      </div>
     </div>
     <div class="card-body">
-      <div class="top-controls">
-        <div class="field">
-          <label for="event-date">開催日</label>
-          <input type="date" id="event-date">
+      <div class="top-controls" style="align-items:flex-end;">
+        <div class="field" style="min-width:240px;">
+          <label for="event-date">開催日を選択（日付ごとに自動ロード＆保存）</label>
+          <div style="display:flex; gap:4px; align-items:center;">
+            <button class="btn btn-secondary" style="padding:6px 10px;" onclick="shiftDate(-1)" title="前日へ">◀</button>
+            <input type="date" id="event-date" style="flex:1;">
+            <button class="btn btn-secondary" style="padding:6px 10px;" onclick="shiftDate(1)" title="翌日へ">▶</button>
+            <button class="btn btn-secondary" style="padding:6px 10px; font-size:11px;" onclick="goToToday()">今日</button>
+          </div>
         </div>
-        <div class="field">
-          <label>適用ルール (自動/手動)</label>
+
+        <div class="field" style="flex:1; min-width:220px;">
+          <label for="event-title">イベント名 / メモ</label>
+          <input type="text" id="event-title" placeholder="（例：NEPO pre. 『SOUND WAVE vol.12』）" oninput="onEventTitleChange(this.value)">
+        </div>
+
+        <div class="field" style="min-width:140px;">
+          <label>適用ルール</label>
           <select id="day-override" onchange="onDayRuleChange()">
             <option value="auto">自動判定 (日付から)</option>
             <option value="weekday">月〜木ルール強制</option>
             <option value="friday">金曜ルール強制</option>
           </select>
         </div>
-        <div id="day-pill" class="day-pill weekday">月〜木</div>
+
+        <div id="day-pill" class="day-pill weekday" style="margin-bottom:2px;">月〜木</div>
       </div>
 
-      <div class="tier-bar" id="tier-bar"></div>
+      <div class="tier-bar" id="tier-bar" style="margin-top:12px;"></div>
     </div>
   </section>
 
@@ -566,23 +581,23 @@
     </div>
   </section>
 
-  <!-- ④ Save & History -->
+  <!-- ④ Save & Event Calendar List -->
   <section class="card">
     <div class="card-head">
-      <span class="card-title">💾 データの保存と履歴一覧</span>
+      <span class="card-title">💾 NEPO日別イベント一覧・精算履歴</span>
       <div style="display:flex; align-items:center; gap:8px;">
-        <span class="card-meta" id="history-count">0件保存済み</span>
-        <button class="toggle-btn" onclick="exportBackupJSON()" title="保存履歴をJSONファイルとしてダウンロード">📤 バックアップ保存</button>
-        <label class="toggle-btn" style="cursor:pointer;" title="JSONファイルから履歴を復元">
+        <span class="card-meta" id="history-count">0件登録済み</span>
+        <button class="toggle-btn" onclick="exportBackupJSON()" title="全データをJSONファイルとしてダウンロード">📤 全バックアップ保存</button>
+        <label class="toggle-btn" style="cursor:pointer;" title="JSONファイルから全データを復元">
           📥 ファイル復元
           <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importBackupJSON(event)">
         </label>
       </div>
     </div>
     <div class="card-body">
-      <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
-        <input type="text" id="save-note" placeholder="メモ（例：NEPO本番 Aフロア）" style="flex:1; min-width:200px;">
-        <button class="btn btn-primary" onclick="saveCurrentData()">💾 この日の精算データを保存</button>
+      <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center;">
+        <button class="btn btn-primary" style="padding:10px 20px; font-size:13px;" onclick="saveCurrentData()">💾 選択中（<span id="save-btn-date">—</span>）のイベントを保存・更新</button>
+        <span style="font-size:12px; color:var(--text-muted);">※入力内容は自動的にも一時保存されますが、このボタンで正式に登録・確定できます</span>
       </div>
 
       <div class="history-list" id="history-list"></div>
@@ -650,56 +665,152 @@
 
   // ─── State ───────────────────────────────────────────
   let config = loadConfig();
-  let state = loadWorkingState();
+  let state = loadInitialState();
 
-  function loadWorkingState() {
+  function loadInitialState() {
+    const saved = loadSaved();
+    const curDate = today();
+    // Check if today's event already exists in saved events
+    const todaySaved = saved.find(e => e.date === curDate);
+    if (todaySaved) {
+      return {
+        date: curDate,
+        dayOverride: todaySaved.dayOverride || 'auto',
+        note: todaySaved.note || '',
+        rows: JSON.parse(JSON.stringify(todaySaved.rows)),
+        saved: saved
+      };
+    }
+    // Check working draft
     try {
       const draft = JSON.parse(localStorage.getItem(STORAGE_KEY_CURRENT));
       if (draft && draft.rows && draft.rows.length) {
         return {
-          date: draft.date || today(),
+          date: draft.date || curDate,
           dayOverride: draft.dayOverride || 'auto',
           note: draft.note || '',
           rows: draft.rows,
-          saved: loadSaved()
+          saved: saved
         };
       }
     } catch {}
+    // Default blank template for new day
     return {
-      date: today(),
+      date: curDate,
       dayOverride: 'auto',
       note: '',
-      rows: JSON.parse(JSON.stringify(STANDARD_ROWS)),
-      saved: loadSaved()
+      rows: createBlankDayRows(),
+      saved: saved
     };
+  }
+
+  function createBlankDayRows() {
+    return [
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: '', onsite: 0, stream: 0, isPerformer: true },
+      { name: 'miya', onsite: 0, stream: 0, isPerformer: false },
+      { name: 'イベント全体', onsite: 0, stream: 0, isPerformer: false },
+      { name: 'お目当て不明', onsite: 0, stream: 0, isPerformer: false }
+    ];
   }
 
   function saveWorkingDraft() {
     try {
-      const noteEl = document.getElementById('save-note');
       const draft = {
         date: state.date,
         dayOverride: state.dayOverride,
-        note: noteEl ? noteEl.value : '',
+        note: state.note || '',
         rows: state.rows
       };
       localStorage.setItem(STORAGE_KEY_CURRENT, JSON.stringify(draft));
     } catch {}
   }
 
+  // ─── Date Navigation & Event Switching ───────────────
+  function switchEventDate(newDate) {
+    if (!newDate) return;
+    state.date = newDate;
+
+    // Check if event already exists in saved list
+    const existing = state.saved.find(e => e.date === newDate);
+    if (existing) {
+      state.rows = JSON.parse(JSON.stringify(existing.rows));
+      state.note = existing.note || '';
+      state.dayOverride = existing.dayOverride || 'auto';
+      if (existing.config) {
+        config = Object.assign({}, DEFAULT_CONFIG, existing.config);
+        applyConfigToUI();
+      }
+      updateDateStatusBadge('saved');
+    } else {
+      // New date: initialize blank performer list
+      state.rows = createBlankDayRows();
+      state.note = '';
+      state.dayOverride = 'auto';
+      updateDateStatusBadge('new');
+    }
+
+    // Sync UI elements
+    document.getElementById('event-date').value = state.date;
+    document.getElementById('event-title').value = state.note || '';
+    document.getElementById('day-override').value = state.dayOverride;
+    const saveBtnDateEl = document.getElementById('save-btn-date');
+    if (saveBtnDateEl) saveBtnDateEl.textContent = state.date;
+
+    updateDayInfo();
+    renderTable();
+    recalc();
+    saveWorkingDraft();
+    renderHistory();
+  }
+
+  function shiftDate(delta) {
+    const cur = state.date ? new Date(state.date + 'T12:00:00') : new Date();
+    cur.setDate(cur.getDate() + delta);
+    const nextDateStr = cur.toISOString().split('T')[0];
+    switchEventDate(nextDateStr);
+  }
+
+  function goToToday() {
+    switchEventDate(today());
+  }
+
+  function onEventTitleChange(val) {
+    state.note = val;
+    saveWorkingDraft();
+  }
+
+  function updateDateStatusBadge(type) {
+    const badge = document.getElementById('date-status-badge');
+    if (!badge) return;
+    if (type === 'saved') {
+      badge.textContent = '💾 登録済みイベント';
+      badge.style.background = 'rgba(59,130,246,0.15)';
+      badge.style.color = 'var(--info)';
+    } else {
+      badge.textContent = state.date === today() ? '✨ 今日のイベント' : '📝 新規イベント作成中';
+      badge.style.background = 'rgba(16,185,129,0.15)';
+      badge.style.color = 'var(--success)';
+    }
+  }
+
   // ─── Init ────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('event-date').value = state.date;
+    document.getElementById('event-title').value = state.note || '';
     document.getElementById('day-override').value = state.dayOverride || 'auto';
-    const noteEl = document.getElementById('save-note');
-    if (noteEl && state.note) noteEl.value = state.note;
+    const saveBtnDateEl = document.getElementById('save-btn-date');
+    if (saveBtnDateEl) saveBtnDateEl.textContent = state.date;
 
     document.getElementById('event-date').addEventListener('change', e => {
-      state.date = e.target.value;
-      updateDayInfo();
-      recalc();
-      saveWorkingDraft();
+      switchEventDate(e.target.value);
     });
+
+    const isExisting = state.saved.some(e => e.date === state.date);
+    updateDateStatusBadge(isExisting ? 'saved' : 'new');
 
     applyConfigToUI();
     updateDayInfo();
@@ -1326,9 +1437,12 @@
   }
 
   // ─── Save & History ──────────────────────────────────
+  // ─── Save & Daily Event Management ───────────────────
   function saveCurrentData() {
     if (!state.date) { showToast('開催日を入力してください', 'ok'); return; }
-    const note = document.getElementById('save-note').value.trim();
+    const titleEl = document.getElementById('event-title');
+    const note = titleEl ? titleEl.value.trim() : (state.note || '');
+    state.note = note;
     const calc = calculate();
 
     const entry = {
@@ -1351,24 +1465,28 @@
 
     const existIdx = state.saved.findIndex(e => e.date === state.date);
     if (existIdx >= 0) {
-      if (!confirm(`${state.date} のデータは既に保存されています。上書きしますか？`)) return;
       state.saved[existIdx] = entry;
     } else {
-      state.saved.unshift(entry);
+      state.saved.push(entry);
     }
 
+    // Sort by date descending (newest first)
+    state.saved.sort((a, b) => b.date.localeCompare(a.date));
+
     persistSaved();
+    updateDateStatusBadge('saved');
     renderHistory();
     saveWorkingDraft();
-    showToast('💾 データを保存しました！', 'ok');
+    updatePerformerMasterDatalist();
+    showToast(`💾 ${state.date} のイベントを保存・登録しました！`, 'ok');
   }
 
   function renderHistory() {
     const container = document.getElementById('history-list');
-    document.getElementById('history-count').textContent = `${state.saved.length}件保存済み`;
+    document.getElementById('history-count').textContent = `${state.saved.length}件登録済み`;
 
     if (!state.saved.length) {
-      container.innerHTML = '<div style="color:var(--text-faint); text-align:center; padding:24px 10px;">まだ保存された履歴はありません。「💾 この日の精算データを保存」を押すとここに一覧化されます。</div>';
+      container.innerHTML = '<div style="color:var(--text-faint); text-align:center; padding:24px 10px;">まだ保存されたイベントはありません。開催日を選んで出演者を登録し「💾 保存・更新」を押すとここに日別スケジュールとして蓄積されます。</div>';
       return;
     }
 
@@ -1377,23 +1495,33 @@
       const d = ev.date ? new Date(ev.date + 'T12:00:00') : null;
       const days = ['日','月','火','水','木','金','土'];
       const dayText = d ? `（${days[d.getDay()]}）` : '';
+      const isCurrent = ev.date === state.date;
+      const performerCount = (ev.rows || []).filter(r => r.isPerformer && r.name).length;
 
       const card = document.createElement('div');
-      card.className = 'hcard';
+      card.className = `hcard ${isCurrent ? 'open' : ''}`;
+      if (isCurrent) card.style.borderColor = 'var(--accent)';
+
       card.innerHTML = `
         <div class="hcard-head" onclick="this.parentElement.classList.toggle('open')">
-          <div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <strong>${ev.date}${dayText}</strong>
-            ${ev.note ? `<span style="color:var(--text-muted); font-size:12px; margin-left:8px;">${esc(ev.note)}</span>` : ''}
+            ${isCurrent ? '<span style="font-size:10px; background:var(--accent-dim); color:var(--accent); padding:1px 6px; border-radius:4px; font-weight:700;">📍 編集中</span>' : ''}
+            ${ev.note ? `<span style="color:var(--text); font-size:12px; font-weight:600;">${esc(ev.note)}</span>` : '<span style="color:var(--text-faint); font-size:11px;">(イベント名未設定)</span>'}
+            <span style="font-size:11px; color:var(--text-muted);">👥 演者 ${performerCount}組</span>
           </div>
-          <div style="font-family:var(--font-mono); font-weight:700; color:var(--accent);">
-            チャージ計: ¥${fmt(ev.results.totalSales)}
+          <div style="font-family:var(--font-mono); font-weight:700; color:var(--accent); font-size:13px;">
+            売上: ¥${fmt(ev.results.totalSales)}
           </div>
         </div>
         <div class="hcard-body">
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin-bottom:12px; font-size:12px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; margin-bottom:12px; font-size:12px;">
             <div style="background:var(--card); padding:8px; border-radius:6px; border:1px solid var(--border);">
-              <div style="font-size:10px; color:var(--text-faint);">演者バック</div>
+              <div style="font-size:10px; color:var(--text-faint);">総売上（チャージ計）</div>
+              <div style="font-weight:700;">¥${fmt(ev.results.totalSales)}</div>
+            </div>
+            <div style="background:var(--card); padding:8px; border-radius:6px; border:1px solid var(--border);">
+              <div style="font-size:10px; color:var(--text-faint);">演者バック計</div>
               <div style="font-weight:700; color:var(--success);">¥${fmt(ev.results.perfBackTotal)}</div>
             </div>
             <div style="background:var(--card); padding:8px; border-radius:6px; border:1px solid var(--border);">
@@ -1405,9 +1533,10 @@
               <div style="font-weight:700;">¥${fmt(ev.results.venueNet)}</div>
             </div>
           </div>
-          <div style="display:flex; justify-content:flex-end; gap:8px;">
-            <button class="btn btn-secondary" onclick="loadSavedEvent(${idx})">📥 画面に読み込む</button>
-            <button class="btn btn-danger-ghost" onclick="deleteSavedEvent(${idx})">🗑 削除</button>
+          <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="switchEventDate('${ev.date}')">📂 この日を開いて編集</button>
+            <button class="btn btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="copyPerformersFromEvent(${idx})" title="この日の出演者リストを現在の開催日にコピー">📋 演者をコピー</button>
+            <button class="btn btn-danger-ghost" style="padding:6px 12px; font-size:11px;" onclick="deleteSavedEvent(${idx})">🗑 削除</button>
           </div>
         </div>
       `;
@@ -1415,35 +1544,32 @@
     });
   }
 
-  function loadSavedEvent(idx) {
+  function copyPerformersFromEvent(idx) {
     const ev = state.saved[idx];
     if (!ev) return;
-    state.date = ev.date;
-    state.dayOverride = ev.dayOverride || 'auto';
-    state.rows = JSON.parse(JSON.stringify(ev.rows));
-    if (ev.config) {
-      config = Object.assign({}, DEFAULT_CONFIG, ev.config);
-      applyConfigToUI();
-    }
-    document.getElementById('event-date').value = state.date;
-    document.getElementById('day-override').value = state.dayOverride;
-    const noteEl = document.getElementById('save-note');
-    if (noteEl) noteEl.value = ev.note || '';
+    if (!confirm(`${ev.date} の出演者リスト（${ev.rows.filter(r=>r.isPerformer).length}組）を現在の開催日（${state.date}）にコピーしますか？\n（枚数は 0 でコピーされます）`)) return;
 
-    updateDayInfo();
+    state.rows = JSON.parse(JSON.stringify(ev.rows)).map(r => ({
+      name: r.name,
+      isPerformer: r.isPerformer,
+      onsite: 0,
+      stream: 0
+    }));
+
     renderTable();
     recalc();
     saveWorkingDraft();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    showToast(`📥 ${ev.date} のデータを復元しました`, 'ok');
+    showToast(`📋 ${ev.date} の出演者リストをコピーしました`, 'ok');
   }
 
   function deleteSavedEvent(idx) {
     const ev = state.saved[idx];
-    if (!confirm(`${ev ? ev.date : ''} の保存履歴を削除しますか？`)) return;
+    if (!confirm(`「${ev ? ev.date : ''}」の登録イベントを削除しますか？`)) return;
     state.saved.splice(idx, 1);
     persistSaved();
     renderHistory();
+    const isCurrent = ev && ev.date === state.date;
+    if (isCurrent) updateDateStatusBadge('new');
     showToast('削除しました', 'ok');
   }
 
@@ -1468,9 +1594,11 @@
       exportedAt: new Date().toISOString(),
       config: config,
       saved: state.saved,
+      templates: getPerformerTemplates(),
       currentDraft: {
         date: state.date,
         dayOverride: state.dayOverride,
+        note: state.note,
         rows: state.rows
       }
     };
@@ -1485,7 +1613,7 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('📤 バックアップファイルを保存しました', 'ok');
+    showToast('📤 全バックアップファイルを保存しました', 'ok');
   }
 
   function importBackupJSON(event) {
@@ -1499,10 +1627,15 @@
         if (!data || !data.saved) {
           throw new Error('バックアップ形式が無効です');
         }
-        if (!confirm(`バックアップファイルを復元しますか？\n（履歴 ${data.saved.length}件 が読み込まれます）`)) return;
+        if (!confirm(`バックアップファイルを復元しますか？\n（登録イベント ${data.saved.length}件 が読み込まれます）`)) return;
 
         state.saved = data.saved;
         persistSaved();
+
+        if (data.templates) {
+          savePerformerTemplates(data.templates);
+          renderPerformerTemplateList();
+        }
 
         if (data.config) {
           config = Object.assign({}, DEFAULT_CONFIG, data.config);
@@ -1510,20 +1643,9 @@
           applyConfigToUI();
         }
 
-        if (data.currentDraft && data.currentDraft.rows) {
-          state.date = data.currentDraft.date || today();
-          state.dayOverride = data.currentDraft.dayOverride || 'auto';
-          state.rows = data.currentDraft.rows;
-          document.getElementById('event-date').value = state.date;
-          document.getElementById('day-override').value = state.dayOverride;
-          updateDayInfo();
-          renderTable();
-          recalc();
-          saveWorkingDraft();
-        }
-
-        renderHistory();
-        showToast('📥 バックアップから完全復元しました！', 'ok');
+        // Switch to today or loaded date
+        switchEventDate(state.date || today());
+        showToast('📥 バックアップから全日程のデータを復元しました！', 'ok');
       } catch (err) {
         alert('ファイルの読み込みに失敗しました：' + err.message);
       }
@@ -1607,9 +1729,12 @@
     }
 
     const sheet = document.getElementById('print-sheet');
+    const eventTitleHtml = state.note ? `<div style="font-size:14px; font-weight:700; color:#111; margin-bottom:6px;">🎪 ${esc(state.note)}</div>` : '';
+
     sheet.innerHTML = `
       <div class="ps-title">精 算 明 細 書</div>
       <div class="ps-subtitle">吉祥寺NEPO</div>
+      ${eventTitleHtml}
 
       <div class="ps-meta">
         <div>
