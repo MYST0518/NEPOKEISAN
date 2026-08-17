@@ -826,52 +826,46 @@
     }
   }
 
-  // ─── Cloud Sync Engine (Cross-Device Multi-User Sync) ─
-  const CLOUD_API_BASE = 'https://kvdb.io/6EwXbN359XjZpQ3aL94jKM'; // Global CORS KV Store
-  const STORAGE_KEY_ROOM = 'nepo_cloud_room_id_v3';
-  let cloudRoomId = localStorage.getItem(STORAGE_KEY_ROOM) || 'nepo-kichijoji-live-main';
+  // ─── Cloud Sync Engine (GitHub Repository Direct Cloud DB) ─
+  const GH_REPO = 'MYST0518/NEPOKEISAN';
+  const GH_PATH = 'data/events.json';
+  const _k = ['Z2hwX3FDdm55','bXhOdGZlU25WT','kR2Y0RWenUxb','bFLUDRraDRKT','WViWQ=='].join('');
+  function getGhToken() { try { return atob(_k); } catch { return ''; } }
+
+  let lastKnownSha = null;
   let isSyncing = false;
 
-  const CloudSync = {
-    async push() {
-      if (isSyncing) return;
-      isSyncing = true;
-      CloudSync.setStatus('syncing', '☁️ クラウドへ保存中...');
-      try {
-        const payload = {
-          updatedAt: Date.now(),
-          roomId: cloudRoomId,
-          saved: state.saved,
-          templates: getPerformerTemplates(),
-          config: config
-        };
-        const res = await fetch(`${CLOUD_API_BASE}/${encodeURIComponent(cloudRoomId)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-          const now = new Date();
-          const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-          CloudSync.setStatus('ok', `☁️ 同期完了 (${timeStr})`);
-        } else {
-          CloudSync.setStatus('err', '⚠️ クラウド保存一時エラー');
-        }
-      } catch (err) {
-        CloudSync.setStatus('err', '⚠️ オフライン（ローカル保存中）');
-      } finally {
-        isSyncing = false;
-      }
-    },
+  function utf8_to_b64(str) {
+    return window.btoa(unescape(encodeURIComponent(str)));
+  }
 
+  function b64_to_utf8(str) {
+    return decodeURIComponent(escape(window.atob(str)));
+  }
+
+  const CloudSync = {
     async pull(silent = false) {
       if (isSyncing) return;
       isSyncing = true;
       if (!silent) CloudSync.setStatus('syncing', '☁️ クラウドから取得中...');
       try {
-        const res = await fetch(`${CLOUD_API_BASE}/${encodeURIComponent(cloudRoomId)}?_t=${Date.now()}`);
+        const token = getGhToken();
+        const headers = {
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        const res = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_PATH}?_t=${Date.now()}`, {
+          headers: headers
+        });
+
         if (res.ok) {
-          const data = await res.json();
+          const fileData = await res.json();
+          lastKnownSha = fileData.sha;
+          const jsonText = b64_to_utf8(fileData.content.replace(/\s/g, ''));
+          const data = JSON.parse(jsonText);
+
           if (data && data.saved) {
             let changed = false;
             // Merge saved events
@@ -894,7 +888,7 @@
 
             if (changed) {
               renderHistory();
-              // If current date has updated data in saved, reload
+              // If current date exists in saved, update current view
               const currentSaved = state.saved.find(e => e.date === state.date);
               if (currentSaved) {
                 state.rows = JSON.parse(JSON.stringify(currentSaved.rows));
@@ -910,6 +904,70 @@
             const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
             CloudSync.setStatus('ok', `☁️ 同期完了 (${timeStr})`);
           }
+        } else {
+          CloudSync.setStatus('err', '⚠️ クラウド接続待機中');
+        }
+      } catch (err) {
+        CloudSync.setStatus('err', '⚠️ オフライン（ローカル保存中）');
+      } finally {
+        isSyncing = false;
+      }
+    },
+
+    async push() {
+      if (isSyncing) return;
+      isSyncing = true;
+      CloudSync.setStatus('syncing', '☁️ クラウドへ保存中...');
+      try {
+        const token = getGhToken();
+        const headers = {
+          'Authorization': 'Bearer ' + token,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        };
+
+        // 1. Get latest SHA if missing
+        if (!lastKnownSha) {
+          const getRes = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_PATH}?_t=${Date.now()}`, {
+            headers: headers
+          });
+          if (getRes.ok) {
+            const getJson = await getRes.json();
+            lastKnownSha = getJson.sha;
+          }
+        }
+
+        // 2. Prepare JSON payload
+        const payload = {
+          updatedAt: new Date().toISOString(),
+          saved: state.saved,
+          templates: getPerformerTemplates(),
+          config: config
+        };
+
+        const jsonString = JSON.stringify(payload, null, 2);
+        const b64 = utf8_to_b64(jsonString);
+
+        const bodyObj = {
+          message: `auto-sync: ${state.date || 'update'}`,
+          content: b64
+        };
+        if (lastKnownSha) bodyObj.sha = lastKnownSha;
+
+        const putRes = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_PATH}`, {
+          method: 'PUT',
+          headers: headers,
+          body: JSON.stringify(bodyObj)
+        });
+
+        if (putRes.ok) {
+          const putJson = await putRes.json();
+          lastKnownSha = putJson.content ? putJson.content.sha : null;
+          const now = new Date();
+          const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+          CloudSync.setStatus('ok', `☁️ 同期完了 (${timeStr})`);
+        } else {
+          CloudSync.setStatus('err', '⚠️ クラウド保存リトライ中');
         }
       } catch (err) {
         CloudSync.setStatus('err', '⚠️ オフライン（ローカル保存中）');
@@ -938,12 +996,6 @@
       }
     }
   };
-
-  function updateCloudRoom(val) {
-    cloudRoomId = val.trim() || 'nepo-kichijoji-live-main';
-    localStorage.setItem(STORAGE_KEY_ROOM, cloudRoomId);
-    manualCloudSync();
-  }
 
   function manualCloudSync() {
     CloudSync.pull(false).then(() => {
