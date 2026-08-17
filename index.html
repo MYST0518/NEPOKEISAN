@@ -323,7 +323,11 @@
       </div>
     </a>
     <div class="header-actions">
-      <button class="toggle-btn" onclick="clearAllInputs()" style="color:var(--danger); border-color:rgba(248,113,113,0.3);">🗑️ 枚数を全部クリア</button>
+      <div id="cloud-sync-status" style="display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; background:rgba(16,185,129,0.12); color:var(--success); border:1px solid rgba(16,185,129,0.3); padding:4px 10px; border-radius:6px; cursor:pointer;" onclick="manualCloudSync()" title="クリックして最新のクラウドデータを取得">
+        <span class="sync-dot" style="width:7px; height:7px; border-radius:50%; background:currentColor; display:inline-block;"></span>
+        <span id="sync-status-text">☁️ クラウド同期中</span>
+      </div>
+      <button class="toggle-btn" onclick="clearAllInputs()" style="color:var(--danger); border-color:rgba(248,113,113,0.3);">🗑️ 枚数クリア</button>
       <button class="toggle-btn" onclick="toggleSettings()">⚙️ 条件・店舗設定</button>
     </div>
   </div>
@@ -338,6 +342,14 @@
       <button class="toggle-btn" onclick="resetConfigToDefault()">デフォルトに戻す</button>
     </div>
     <div class="settings-grid">
+      <div class="field" style="grid-column: 1 / -1; background:var(--surface); padding:10px 14px; border-radius:6px; border:1px solid var(--border);">
+        <label style="color:var(--accent); font-weight:700;">☁️ クラウド同期ルームID（全端末で同じIDを設定するとデータが共有されます）</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="cfg-cloud-room" value="nepo-kichijoji-live-main" placeholder="例：nepo-kichijoji-live-main" oninput="updateCloudRoom(this.value)">
+          <button class="btn btn-secondary" style="white-space:nowrap; padding:6px 12px; font-size:11px;" onclick="manualCloudSync()">🔄 今すぐ同期</button>
+        </div>
+        <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">※店舗のPC・スタッフのスマホで同じルームID（初期値でOK）を開くだけで、全日程の出演者や精算データがリアルタイム共有されます。</div>
+      </div>
       <div class="field">
         <label>ノルマ適用方式</label>
         <select id="cfg-norma-mode" onchange="updateConfig()">
@@ -796,11 +808,138 @@
     }
   }
 
+  // ─── Cloud Sync Engine (Cross-Device Multi-User Sync) ─
+  const CLOUD_API_BASE = 'https://kvdb.io/6EwXbN359XjZpQ3aL94jKM'; // Global CORS KV Store
+  const STORAGE_KEY_ROOM = 'nepo_cloud_room_id_v3';
+  let cloudRoomId = localStorage.getItem(STORAGE_KEY_ROOM) || 'nepo-kichijoji-live-main';
+  let isSyncing = false;
+
+  const CloudSync = {
+    async push() {
+      if (isSyncing) return;
+      isSyncing = true;
+      CloudSync.setStatus('syncing', '☁️ クラウドへ保存中...');
+      try {
+        const payload = {
+          updatedAt: Date.now(),
+          roomId: cloudRoomId,
+          saved: state.saved,
+          templates: getPerformerTemplates(),
+          config: config
+        };
+        const res = await fetch(`${CLOUD_API_BASE}/${encodeURIComponent(cloudRoomId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const now = new Date();
+          const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+          CloudSync.setStatus('ok', `☁️ 同期完了 (${timeStr})`);
+        } else {
+          CloudSync.setStatus('err', '⚠️ クラウド保存一時エラー');
+        }
+      } catch (err) {
+        CloudSync.setStatus('err', '⚠️ オフライン（ローカル保存中）');
+      } finally {
+        isSyncing = false;
+      }
+    },
+
+    async pull(silent = false) {
+      if (isSyncing) return;
+      isSyncing = true;
+      if (!silent) CloudSync.setStatus('syncing', '☁️ クラウドから取得中...');
+      try {
+        const res = await fetch(`${CLOUD_API_BASE}/${encodeURIComponent(cloudRoomId)}?_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.saved) {
+            let changed = false;
+            // Merge saved events
+            const localMap = new Map((state.saved || []).map(e => [e.date, e]));
+            data.saved.forEach(remoteEv => {
+              const localEv = localMap.get(remoteEv.date);
+              if (!localEv || (remoteEv.id && (!localEv.id || remoteEv.id >= localEv.id))) {
+                localMap.set(remoteEv.date, remoteEv);
+                changed = true;
+              }
+            });
+            state.saved = Array.from(localMap.values()).sort((a,b) => b.date.localeCompare(a.date));
+            persistSaved();
+
+            // Merge templates
+            if (data.templates && Array.isArray(data.templates) && data.templates.length) {
+              savePerformerTemplates(data.templates);
+              renderPerformerTemplateList();
+            }
+
+            if (changed) {
+              renderHistory();
+              // If current date has updated data in saved, reload
+              const currentSaved = state.saved.find(e => e.date === state.date);
+              if (currentSaved) {
+                state.rows = JSON.parse(JSON.stringify(currentSaved.rows));
+                state.note = currentSaved.note || '';
+                document.getElementById('event-title').value = state.note;
+                renderTable();
+                recalc();
+                updateDateStatusBadge('saved');
+              }
+            }
+
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            CloudSync.setStatus('ok', `☁️ 同期完了 (${timeStr})`);
+          }
+        }
+      } catch (err) {
+        CloudSync.setStatus('err', '⚠️ オフライン（ローカル保存中）');
+      } finally {
+        isSyncing = false;
+      }
+    },
+
+    setStatus(type, text) {
+      const badge = document.getElementById('cloud-sync-status');
+      const textEl = document.getElementById('sync-status-text');
+      if (!badge || !textEl) return;
+      textEl.textContent = text;
+      if (type === 'ok') {
+        badge.style.background = 'rgba(16,185,129,0.12)';
+        badge.style.color = 'var(--success)';
+        badge.style.borderColor = 'rgba(16,185,129,0.3)';
+      } else if (type === 'syncing') {
+        badge.style.background = 'rgba(245,158,11,0.12)';
+        badge.style.color = 'var(--accent)';
+        badge.style.borderColor = 'rgba(245,158,11,0.3)';
+      } else {
+        badge.style.background = 'rgba(100,116,139,0.15)';
+        badge.style.color = 'var(--text-muted)';
+        badge.style.borderColor = 'var(--border)';
+      }
+    }
+  };
+
+  function updateCloudRoom(val) {
+    cloudRoomId = val.trim() || 'nepo-kichijoji-live-main';
+    localStorage.setItem(STORAGE_KEY_ROOM, cloudRoomId);
+    manualCloudSync();
+  }
+
+  function manualCloudSync() {
+    CloudSync.pull(false).then(() => {
+      showToast('☁️ クラウドと最新データを同期しました', 'ok');
+    });
+  }
+
   // ─── Init ────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('event-date').value = state.date;
     document.getElementById('event-title').value = state.note || '';
     document.getElementById('day-override').value = state.dayOverride || 'auto';
+    const roomInput = document.getElementById('cfg-cloud-room');
+    if (roomInput) roomInput.value = cloudRoomId;
     const saveBtnDateEl = document.getElementById('save-btn-date');
     if (saveBtnDateEl) saveBtnDateEl.textContent = state.date;
 
@@ -818,6 +957,12 @@
     renderHistory();
     renderPerformerTemplateList();
     updatePerformerMasterDatalist();
+
+    // Initial Cloud Pull & Interval Sync
+    CloudSync.pull(true);
+    setInterval(() => {
+      CloudSync.pull(true);
+    }, 25000);
   });
 
   // ─── Config Management ───────────────────────────────
@@ -1364,6 +1509,7 @@
     if (inputEl) inputEl.value = '';
     renderPerformerTemplateList();
     updatePerformerMasterDatalist();
+    CloudSync.push();
     showToast(`👥 演者テンプレート「${name}」を保存しました！`, 'ok');
   }
 
@@ -1393,6 +1539,7 @@
     templates.splice(idx, 1);
     savePerformerTemplates(templates);
     renderPerformerTemplateList();
+    CloudSync.push();
     showToast('削除しました', 'ok');
   }
 
@@ -1422,7 +1569,7 @@
     // From current rows
     state.rows.forEach(r => { if (r.name) names.add(r.name); });
     // From standard rows
-    STANDARD_ROWS.forEach(r => names.add(r.name));
+    STANDARD_ROWS.forEach(r => { if (r.name) names.add(r.name); });
     // From templates
     getPerformerTemplates().forEach(t => {
       (t.rows || []).forEach(r => { if (r.name) names.add(r.name); });
@@ -1435,7 +1582,6 @@
     datalist.innerHTML = Array.from(names).map(n => `<option value="${esc(n)}">`).join('');
   }
 
-  // ─── Save & History ──────────────────────────────────
   // ─── Save & Daily Event Management ───────────────────
   function saveCurrentData() {
     if (!state.date) { showToast('開催日を入力してください', 'ok'); return; }
@@ -1477,7 +1623,8 @@
     renderHistory();
     saveWorkingDraft();
     updatePerformerMasterDatalist();
-    showToast(`💾 ${state.date} のイベントを保存・登録しました！`, 'ok');
+    CloudSync.push();
+    showToast(`💾 ${state.date} のイベントを保存し、クラウド同期しました！`, 'ok');
   }
 
   function renderHistory() {
@@ -1569,6 +1716,7 @@
     renderHistory();
     const isCurrent = ev && ev.date === state.date;
     if (isCurrent) updateDateStatusBadge('new');
+    CloudSync.push();
     showToast('削除しました', 'ok');
   }
 
