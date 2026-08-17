@@ -372,16 +372,21 @@
         </select>
       </div>
       <div class="field">
+        <label>配信（ツイキャス）バック開始条件</label>
+        <select id="cfg-stream-back-mode" onchange="updateConfig()">
+          <option value="from_1st" selected>1枚目から50%バック（全枚数対象・標準）</option>
+          <option value="from_3rd">3枚目から50%バック（2枚控除・未達負担なし）</option>
+          <option value="from_4th">4枚目以降から50%バック（3枚控除・未達負担なし）</option>
+          <option value="none">配信バックなし（0円）</option>
+        </select>
+      </div>
+      <div class="field">
         <label>リアルチケット単価 (¥)</label>
         <input type="number" id="cfg-price-onsite" value="2500" step="100" min="0" oninput="updateConfig()" onchange="updateConfig()">
       </div>
       <div class="field">
         <label>配信チケット単価 (¥)</label>
         <input type="number" id="cfg-price-stream" value="2000" step="100" min="0" oninput="updateConfig()" onchange="updateConfig()">
-      </div>
-      <div class="field" id="cfg-field-norma-stream">
-        <label>配信ノルマ枚数 (それぞれ設定時)</label>
-        <input type="number" id="cfg-norma-stream" value="0" min="0" step="1" oninput="updateConfig()" onchange="updateConfig()">
       </div>
       <div class="field">
         <label>演者バック率 (%)</label>
@@ -598,10 +603,10 @@
     priceOnsite: 2500,
     priceStream: 2000,
     normaOnsite: 3,                 // 現地ノルマ枚数 (3枚)
-    normaStream: 0,                 // 配信ノルマ枚数
     normaStart: 'after',            // 'after' (4枚目以降からバック) / 'at' (3枚目からバック)
     underQuotaPenalty: true,        // 未達成時の不足分を演者負担にするか
     quotaPenaltyInTotal: false,     // ノルマ不足負担金をチャージ計(売上)に含めるか (false: 後で個別精算)
+    streamBackMode: 'from_1st',     // 'from_1st' (1枚目から全バック), 'from_3rd' (3枚目から/2枚控除・負担なし), 'from_4th' (4枚目以降/3枚控除・負担なし), 'none'
     perfBackRate: 0.5,              // 50%
     equipFeePerBand: 0,             // 1組あたり機材費 (0円で機材費なし)
     equipInTotal: false             // 機材費をチャージ計に含めるか
@@ -719,9 +724,9 @@
     document.getElementById('cfg-norma-start').value = config.normaStart || 'after';
     document.getElementById('cfg-under-quota-penalty').value = config.underQuotaPenalty ? 'true' : 'false';
     document.getElementById('cfg-quota-penalty-in-total').value = config.quotaPenaltyInTotal ? 'true' : 'false';
+    document.getElementById('cfg-stream-back-mode').value = config.streamBackMode || 'from_1st';
     document.getElementById('cfg-price-onsite').value = config.priceOnsite;
     document.getElementById('cfg-price-stream').value = config.priceStream;
-    document.getElementById('cfg-norma-stream').value = config.normaStream ?? 0;
     document.getElementById('cfg-perf-rate').value = Math.round((config.perfBackRate ?? 0.5) * 100);
     document.getElementById('cfg-equip-fee').value = config.equipFeePerBand ?? 0;
     document.getElementById('cfg-equip-in-total').value = config.equipInTotal ? 'true' : 'false';
@@ -733,10 +738,12 @@
     // Update table meta description
     let metaText = `リアル ¥${fmt(config.priceOnsite)} / 配信 ¥${fmt(config.priceStream)}`;
     const startText = config.normaStart === 'after' ? `${config.normaOnsite + 1}枚目以降から` : `${config.normaOnsite}枚目から`;
+    const streamModeText = config.streamBackMode === 'from_3rd' ? '配信3枚目からバック' : (config.streamBackMode === 'from_4th' ? '配信4枚目以降からバック' : (config.streamBackMode === 'none' ? '配信バックなし' : '配信全バック'));
+
     if (config.normaMode === 'onsite_only') {
-      metaText += ` ｜ 現地ノルマ${config.normaOnsite}枚 (${startText}${Math.round(config.perfBackRate*100)}%バック・配信は全バック)`;
+      metaText += ` ｜ 現地ノルマ${config.normaOnsite}枚 (${startText}${Math.round(config.perfBackRate*100)}%バック) ｜ ${streamModeText}`;
     } else if (config.normaMode === 'each') {
-      metaText += ` ｜ 現地${config.normaOnsite}枚 / 配信${config.normaStream}枚 ノルマ`;
+      metaText += ` ｜ 現地・配信それぞれにノルマ判定`;
     } else {
       metaText += ` ｜ 現地＋配信 合計${config.normaOnsite}枚 ノルマ`;
     }
@@ -752,9 +759,9 @@
     config.normaStart = document.getElementById('cfg-norma-start').value;
     config.underQuotaPenalty = document.getElementById('cfg-under-quota-penalty').value === 'true';
     config.quotaPenaltyInTotal = document.getElementById('cfg-quota-penalty-in-total').value === 'true';
+    config.streamBackMode = document.getElementById('cfg-stream-back-mode').value;
     config.priceOnsite = Math.max(0, parseInt(document.getElementById('cfg-price-onsite').value) || 0);
     config.priceStream = Math.max(0, parseInt(document.getElementById('cfg-price-stream').value) || 0);
-    config.normaStream = Math.max(0, parseFloat(document.getElementById('cfg-norma-stream').value) || 0);
     config.perfBackRate = Math.max(0, (parseFloat(document.getElementById('cfg-perf-rate').value) || 50) / 100);
     config.equipFeePerBand = Math.max(0, parseInt(document.getElementById('cfg-equip-fee').value) || 0);
     config.equipInTotal = document.getElementById('cfg-equip-in-total').value === 'true';
@@ -864,8 +871,21 @@
           statusHtml = shortage > 0 ? `<span class="quota-pill shortage">不足 ${shortage}枚</span>` : `<span class="quota-pill exact">達成</span>`;
         }
       }
-      // 配信はノルマなしで全枚数バック
-      streamBack = stream * config.priceStream * config.perfBackRate;
+
+      // 配信（ツイキャス）バック計算（未達負担なし）
+      if (config.streamBackMode === 'from_1st') {
+        streamBack = stream * config.priceStream * config.perfBackRate;
+      } else if (config.streamBackMode === 'from_3rd') {
+        const eligible = Math.max(0, stream - 2); // 3枚目から50%バック (2枚控除)
+        streamBack = eligible * config.priceStream * config.perfBackRate;
+      } else if (config.streamBackMode === 'from_4th') {
+        const eligible = Math.max(0, stream - 3); // 4枚目以降から50%バック (3枚控除)
+        streamBack = eligible * config.priceStream * config.perfBackRate;
+      } else if (config.streamBackMode === 'none') {
+        streamBack = 0;
+      } else {
+        streamBack = stream * config.priceStream * config.perfBackRate;
+      }
 
     } else if (config.normaMode === 'combined') {
       // 合計ノルマ判定
@@ -1576,10 +1596,12 @@
 
     // Norma description
     let normaDesc = '';
+    const streamModeText = config.streamBackMode === 'from_3rd' ? '配信3枚目からバック(未達負担なし)' : (config.streamBackMode === 'from_4th' ? '配信4枚目以降からバック(未達負担なし)' : (config.streamBackMode === 'none' ? '配信バックなし' : '配信全バック'));
+
     if (config.normaMode === 'onsite_only') {
-      normaDesc = `現地 ${config.normaOnsite}枚目から${Math.round(config.perfBackRate*100)}%バック / 配信はノルマなし（全枚数${Math.round(config.perfBackRate*100)}%バック）`;
+      normaDesc = `現地 ${config.normaOnsite}枚目から${Math.round(config.perfBackRate*100)}%バック / ${streamModeText}`;
     } else if (config.normaMode === 'each') {
-      normaDesc = `現地 ${config.normaOnsite}枚目から / 配信 ${config.normaStream}枚目から ${Math.round(config.perfBackRate*100)}%バック`;
+      normaDesc = `現地・配信それぞれにノルマ判定`;
     } else {
       normaDesc = `合計 ${config.normaOnsite}枚目から ${Math.round(config.perfBackRate*100)}%バック`;
     }
