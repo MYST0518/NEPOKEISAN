@@ -277,7 +277,6 @@
     <div class="header-actions">
       <button class="toggle-btn" onclick="clearAllInputs()" style="color:var(--danger); border-color:rgba(248,113,113,0.3);">🗑️ 枚数を全部クリア</button>
       <button class="toggle-btn" onclick="toggleSettings()">⚙️ 条件・店舗設定</button>
-      <button class="toggle-btn" onclick="loadSamplePDFData()">📄 8/14実績例をロード</button>
     </div>
   </div>
 </header>
@@ -930,18 +929,6 @@
     renderTable();
     recalc();
     showToast('標準リストにリセットしました', 'ok');
-  }
-
-  function loadSamplePDFData() {
-    state.date = '2026-08-14';
-    state.dayOverride = 'friday';
-    document.getElementById('event-date').value = state.date;
-    document.getElementById('day-override').value = 'friday';
-    state.rows = JSON.parse(JSON.stringify(STANDARD_ROWS));
-    updateDayInfo();
-    renderTable();
-    recalc();
-    showToast('📄 8/14の実績データ（PDF完全一致）をロードしました！', 'ok');
   }
 
   // ─── Save & History ──────────────────────────────────
