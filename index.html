@@ -264,6 +264,41 @@
     }
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.ok { color: var(--success); border-color: var(--success); }
+
+    /* ─── Print-only 明細書 (hidden on screen) ─── */
+    #print-sheet { display: none; }
+
+    @media print {
+      *, *::before, *::after { color: #000 !important; background: #fff !important; border-color: #ccc !important; box-shadow: none !important; }
+      body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', sans-serif; font-size: 11px; line-height: 1.6; }
+      .header, .main, .toast { display: none !important; }
+      #print-sheet { display: block !important; padding: 12mm 14mm; }
+
+      .ps-title { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 4px; letter-spacing: .05em; }
+      .ps-subtitle { text-align: center; font-size: 11px; color: #666; margin-bottom: 16px; }
+      .ps-meta { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #000; }
+      .ps-section { font-size: 12px; font-weight: 700; margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #999; }
+
+      .ps-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px; }
+      .ps-table th { background: #eee !important; padding: 5px 7px; text-align: left; font-weight: 700; border: 1px solid #aaa; white-space: nowrap; }
+      .ps-table td { padding: 5px 7px; border: 1px solid #ccc; }
+      .ps-table .num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+      .ps-table .total-row td { font-weight: 700; background: #f5f5f5 !important; border-top: 2px solid #000; }
+
+      .ps-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+      .ps-box { border: 1px solid #aaa; padding: 8px 10px; border-radius: 4px; }
+      .ps-box.wide { grid-column: 1 / -1; }
+      .ps-box .label { font-size: 9px; color: #666; text-transform: uppercase; letter-spacing: .05em; }
+      .ps-box .value { font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+      .ps-box.accent { border: 2px solid #000; }
+      .ps-box.accent .value { font-size: 18px; }
+
+      .ps-footer { margin-top: 24px; font-size: 9px; color: #999; text-align: center; border-top: 1px solid #ddd; padding-top: 8px; }
+      .ps-stamp { margin-top: 16px; display: flex; justify-content: flex-end; gap: 40px; }
+      .ps-stamp-box { width: 80px; height: 80px; border: 1px solid #aaa; display: flex; align-items: flex-end; justify-content: center; font-size: 9px; color: #aaa; padding-bottom: 4px; }
+
+      @page { size: A4; margin: 10mm; }
+    }
   </style>
 </head>
 <body>
@@ -460,6 +495,19 @@
     </div>
   </section>
 
+  <!-- PDF Export Button -->
+  <section class="card">
+    <div class="card-head">
+      <span class="card-title">📄 PDF明細書出力</span>
+    </div>
+    <div class="card-body">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="exportPDF()" style="font-size:14px; padding:12px 24px;">📄 PDF明細書を出力する</button>
+        <span style="font-size:12px; color:var(--text-muted);">ブラウザの印刷画面が開きます → 「PDFに保存」を選択してください</span>
+      </div>
+    </div>
+  </section>
+
   <!-- ④ Save & History -->
   <section class="card">
     <div class="card-head">
@@ -477,6 +525,9 @@
   </section>
 
 </main>
+
+<!-- Hidden print-only sheet -->
+<div id="print-sheet"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -1057,6 +1108,136 @@
     el.className = `toast ${type} show`;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  // ─── PDF Export ──────────────────────────────────────
+  function exportPDF() {
+    const calc = calculate();
+    const d = state.date ? new Date(state.date + 'T12:00:00') : new Date();
+    const days = ['日','月','火','水','木','金','土'];
+    const dateStr = state.date ? `${state.date}（${days[d.getDay()]}）` : '未設定';
+    const ratePercent = Math.round(calc.miyaRate * 100);
+    const now = new Date();
+    const printedAt = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    // Build performer rows
+    let ticketRows = '';
+    let totalOnsite = 0, totalStream = 0;
+    state.rows.forEach(r => {
+      totalOnsite += (r.onsite || 0);
+      totalStream += (r.stream || 0);
+      const tag = r.isPerformer ? '演者' : '一般';
+      ticketRows += `<tr>
+        <td>${esc(r.name)}</td>
+        <td style="font-size:9px; color:#888;">${tag}</td>
+        <td class="num">${r.onsite || 0}</td>
+        <td class="num">${r.stream || 0}</td>
+        <td class="num">${(r.onsite||0) + (r.stream||0)}</td>
+      </tr>`;
+    });
+    ticketRows += `<tr class="total-row">
+      <td colspan="2">合計</td>
+      <td class="num">${totalOnsite}</td>
+      <td class="num">${totalStream}</td>
+      <td class="num">${totalOnsite + totalStream}</td>
+    </tr>`;
+
+    // Build settlement rows
+    let settlementRows = '';
+    calc.rowCalcs.filter(c => c.r.isPerformer).forEach(({ r, res }) => {
+      const net = res.netSettlement >= 0 ? `+¥${fmt(res.netSettlement)}` : `-¥${fmt(Math.abs(res.netSettlement))}`;
+      settlementRows += `<tr>
+        <td>${esc(r.name)}</td>
+        <td class="num">${r.onsite || 0}</td>
+        <td class="num">${r.stream || 0}</td>
+        <td class="num">¥${fmt(res.realBack)}</td>
+        <td class="num">¥${fmt(res.streamBack)}</td>
+        <td class="num" style="font-weight:700;">¥${fmt(res.totalBack)}</td>
+        <td class="num">${config.equipFeePerBand > 0 ? '¥'+fmt(res.equipFee) : '—'}</td>
+        <td class="num" style="font-weight:700;">${net}</td>
+      </tr>`;
+    });
+
+    // Norma description
+    let normaDesc = '';
+    if (config.normaMode === 'onsite_only') {
+      normaDesc = `現地 ${config.normaOnsite}枚目から${Math.round(config.perfBackRate*100)}%バック / 配信はノルマなし（全枚数${Math.round(config.perfBackRate*100)}%バック）`;
+    } else if (config.normaMode === 'each') {
+      normaDesc = `現地 ${config.normaOnsite}枚目から / 配信 ${config.normaStream}枚目から ${Math.round(config.perfBackRate*100)}%バック`;
+    } else {
+      normaDesc = `合計 ${config.normaOnsite}枚目から ${Math.round(config.perfBackRate*100)}%バック`;
+    }
+
+    const sheet = document.getElementById('print-sheet');
+    sheet.innerHTML = `
+      <div class="ps-title">精 算 明 細 書</div>
+      <div class="ps-subtitle">吉祥寺NEPO</div>
+
+      <div class="ps-meta">
+        <div>
+          <strong>開催日:</strong> ${dateStr}<br>
+          <strong>適用ルール:</strong> ${calc.dt === 'friday' ? '金曜' : '月〜木'}（@miyaバック率 ${ratePercent}%）
+        </div>
+        <div style="text-align:right;">
+          <strong>チケット単価:</strong> 現地 ¥${fmt(config.priceOnsite)} / 配信 ¥${fmt(config.priceStream)}<br>
+          <strong>ノルマ:</strong> ${normaDesc}
+        </div>
+      </div>
+
+      <div class="ps-section">■ チケット枚数内訳</div>
+      <table class="ps-table">
+        <thead><tr><th>出演者 / 区分</th><th>区分</th><th class="num">現地</th><th class="num">配信</th><th class="num">合計</th></tr></thead>
+        <tbody>${ticketRows}</tbody>
+      </table>
+
+      <div class="ps-section">■ 収益サマリー</div>
+      <div class="ps-summary">
+        <div class="ps-box wide">
+          <div class="label">チャージ計（総売上）</div>
+          <div class="value">¥${fmt(calc.totalSales)}</div>
+        </div>
+        <div class="ps-box">
+          <div class="label">現地売上 (${calc.realCount}名)</div>
+          <div class="value">¥${fmt(calc.realSales)}</div>
+        </div>
+        <div class="ps-box">
+          <div class="label">配信売上 (${calc.streamCount}名)</div>
+          <div class="value">¥${fmt(calc.streamSales)}</div>
+        </div>
+        ${config.equipFeePerBand > 0 ? `<div class="ps-box"><div class="label">機材費 (${calc.performerCount}組 × ¥${fmt(config.equipFeePerBand)})</div><div class="value">¥${fmt(calc.equipSales)}</div></div>` : ''}
+        <div class="ps-box">
+          <div class="label">演者バック計</div>
+          <div class="value">¥${fmt(calc.perfBackTotal)}</div>
+        </div>
+        <div class="ps-box accent">
+          <div class="label">@miyaさんバック（${ratePercent}%）</div>
+          <div class="value">¥${fmt(calc.miyaBack)}</div>
+        </div>
+        <div class="ps-box accent wide">
+          <div class="label">会場手残り</div>
+          <div class="value">¥${fmt(calc.venueNet)}</div>
+        </div>
+      </div>
+
+      <div class="ps-section">■ 出演者別 精算明細</div>
+      <table class="ps-table">
+        <thead><tr>
+          <th>出演者</th><th class="num">現地</th><th class="num">配信</th>
+          <th class="num">現地バック</th><th class="num">配信バック</th><th class="num">バック計</th>
+          <th class="num">機材費</th><th class="num">精算額</th>
+        </tr></thead>
+        <tbody>${settlementRows}</tbody>
+      </table>
+
+      <div class="ps-stamp">
+        <div class="ps-stamp-box">確認印</div>
+        <div class="ps-stamp-box">承認印</div>
+      </div>
+
+      <div class="ps-footer">出力日時: ${printedAt} ｜ 吉祥寺NEPO 精算・収益計算システム</div>
+    `;
+
+    window.print();
   }
 </script>
 </body>
