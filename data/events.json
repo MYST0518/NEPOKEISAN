@@ -1,7 +1,22 @@
 {
-    "updatedAt":  "2026-08-18T08:11:09.7956079+09:00",
+    "updatedAt":  "2026-08-18T08:12:20.0101380+09:00",
     "saved":  [
-
+                  {
+                      "date":  "2026-08-18",
+                      "rows":  [
+                                   {
+                                       "isPerformer":  true,
+                                       "name":  "テスト演者A",
+                                       "stream":  3,
+                                       "onsite":  5
+                                   }
+                               ],
+                      "id":  1787008340016,
+                      "results":  {
+                                      "totalSales":  18500
+                                  },
+                      "note":  "クラウド同期テスト"
+                  }
               ],
     "templates":  [
 
