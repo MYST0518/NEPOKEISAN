@@ -176,6 +176,16 @@
     .pcat-performer { background: rgba(96,165,250,0.15); color: var(--info); }
     .pcat-general   { background: rgba(156,163,175,0.15); color: var(--text-muted); }
 
+    /* Quota Pill */
+    .quota-pill {
+      display: inline-block; padding: 2px 7px; border-radius: 6px; font-size: 11px; font-weight: 700;
+      white-space: nowrap; text-align: center; font-family: var(--font-mono);
+    }
+    .quota-pill.achieved { background: var(--success-dim); color: var(--success); }
+    .quota-pill.exact    { background: var(--warning-dim); color: var(--warning); }
+    .quota-pill.shortage { background: var(--danger-dim);  color: var(--danger);  }
+    .quota-pill.none     { color: var(--text-faint); font-weight: 400; }
+
     /* Number input with stepper */
     .num-stepper { display: inline-flex; align-items: center; justify-content: center; gap: 2px; }
     .step-btn {
@@ -324,7 +334,7 @@
   <!-- ⚙️ Customizable Settings Panel -->
   <section class="card" id="settings-panel">
     <div class="card-head" style="background:transparent; padding:0 0 12px;">
-      <span class="card-title">⚙️ 条件・バック率・ノルマ設定（日・店舗ごとにカスタマイズ可能）</span>
+      <span class="card-title">⚙️ 条件・バック率・ノルマ設定（変更すると即座に表に反映されます）</span>
       <button class="toggle-btn" onclick="resetConfigToDefault()">デフォルトに戻す</button>
     </div>
     <div class="settings-grid">
@@ -332,38 +342,52 @@
         <label>ノルマ適用方式</label>
         <select id="cfg-norma-mode" onchange="updateConfig()">
           <option value="onsite_only" selected>現地のみノルマ（配信は1枚目からバック）</option>
-          <option value="each">現地・配信それぞれにノルマ設定</option>
           <option value="combined">現地＋配信の合計でノルマ判定</option>
+          <option value="each">現地・配信それぞれにノルマ設定</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>現地ノルマ枚数</label>
+        <input type="number" id="cfg-norma-onsite" value="3" min="0" step="1" oninput="updateConfig()" onchange="updateConfig()">
+      </div>
+      <div class="field">
+        <label>ノルマ達成時のバック開始</label>
+        <select id="cfg-norma-start" onchange="updateConfig()">
+          <option value="after" selected>4枚目以降から50%バック（3枚までノルマ控除）</option>
+          <option value="at">3枚目から50%バック（2枚控除）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ノルマ未達成時の演者負担</label>
+        <select id="cfg-under-quota-penalty" onchange="updateConfig()">
+          <option value="true" selected>不足分を演者が負担（例: 不足2枚なら -¥5,000）</option>
+          <option value="false">負担なし（バック0円で終了）</option>
         </select>
       </div>
       <div class="field">
         <label>リアルチケット単価 (¥)</label>
-        <input type="number" id="cfg-price-onsite" value="2500" step="100" onchange="updateConfig()">
+        <input type="number" id="cfg-price-onsite" value="2500" step="100" min="0" oninput="updateConfig()" onchange="updateConfig()">
       </div>
       <div class="field">
         <label>配信チケット単価 (¥)</label>
-        <input type="number" id="cfg-price-stream" value="2000" step="100" onchange="updateConfig()">
-      </div>
-      <div class="field">
-        <label>現地ノルマ (何枚目からバック)</label>
-        <input type="number" id="cfg-norma-onsite" value="3" step="1" title="3なら3枚目から50%バック (2枚引かれる)" onchange="updateConfig()">
+        <input type="number" id="cfg-price-stream" value="2000" step="100" min="0" oninput="updateConfig()" onchange="updateConfig()">
       </div>
       <div class="field" id="cfg-field-norma-stream">
-        <label>配信ノルマ (何枚目からバック)</label>
-        <input type="number" id="cfg-norma-stream" value="1" step="1" title="1なら1枚目からバック(ノルマなし)" onchange="updateConfig()">
+        <label>配信ノルマ枚数 (それぞれ設定時)</label>
+        <input type="number" id="cfg-norma-stream" value="0" min="0" step="1" oninput="updateConfig()" onchange="updateConfig()">
       </div>
       <div class="field">
         <label>演者バック率 (%)</label>
-        <input type="number" id="cfg-perf-rate" value="50" step="5" onchange="updateConfig()">
+        <input type="number" id="cfg-perf-rate" value="50" step="5" min="0" max="100" oninput="updateConfig()" onchange="updateConfig()">
       </div>
       <div class="field">
         <label>1組あたり機材費 (¥) <span style="font-weight:400;color:var(--text-faint);">※0円で機材費なし</span></label>
-        <input type="number" id="cfg-equip-fee" value="0" step="500" min="0" onchange="updateConfig()">
+        <input type="number" id="cfg-equip-fee" value="0" step="500" min="0" oninput="updateConfig()" onchange="updateConfig()">
       </div>
       <div class="field">
         <label>機材費をチャージ計に合算する？</label>
         <select id="cfg-equip-in-total" onchange="updateConfig()">
-          <option value="true">合算する（機材費ありの標準）</option>
+          <option value="true">合算する</option>
           <option value="false" selected>合算しない（チケット売上のみ）</option>
         </select>
       </div>
@@ -420,9 +444,10 @@
       <table id="main-table">
         <thead>
           <tr>
-            <th style="width:200px;">出演者 / 区分</th>
-            <th style="width:130px;">リアル (<span class="unit-price-onsite">¥2,500</span>)</th>
-            <th style="width:130px;">配信 (<span class="unit-price-stream">¥2,000</span>)</th>
+            <th style="width:180px;">出演者 / 区分</th>
+            <th style="width:120px;">リアル (<span class="unit-price-onsite">¥2,500</span>)</th>
+            <th style="width:120px;">配信 (<span class="unit-price-stream">¥2,000</span>)</th>
+            <th style="width:110px;">ノルマ判定</th>
             <th class="num-col" style="width:90px;">リアルバック</th>
             <th class="num-col" style="width:90px;">配信バック</th>
             <th class="num-col" style="width:100px;">演者バック計</th>
@@ -534,14 +559,16 @@
 <script>
   // ─── Default Configuration ──────────────────────────
   const DEFAULT_CONFIG = {
-    normaMode: 'onsite_only', // 'onsite_only' (現地のみ3枚目から), 'each', 'combined'
+    normaMode: 'onsite_only', // 'onsite_only', 'combined', 'each'
     priceOnsite: 2500,
     priceStream: 2000,
-    normaOnsite: 3,       // 現地は3枚目からバック (2枚引かれる)
-    normaStream: 1,       // 配信は1枚目からバック (ノルマなし)
-    perfBackRate: 0.5,    // 50%
-    equipFeePerBand: 0,   // 1組あたり機材費 (0円で機材費なし)
-    equipInTotal: false   // 機材費をチャージ計に含めるか
+    normaOnsite: 3,           // 現地ノルマ枚数 (3枚)
+    normaStream: 0,           // 配信ノルマ枚数
+    normaStart: 'after',      // 'after' (4枚目以降からバック = 3枚控除) / 'at' (3枚目からバック = 2枚控除)
+    underQuotaPenalty: true,  // 未達成時の不足分を演者負担にするか
+    perfBackRate: 0.5,        // 50%
+    equipFeePerBand: 0,       // 1組あたり機材費 (0円で機材費なし)
+    equipInTotal: false       // 機材費をチャージ計に含めるか
   };
 
   // ─── Default Rows (8/14 NEPO standard format) ────────
@@ -613,12 +640,14 @@
 
   function applyConfigToUI() {
     document.getElementById('cfg-norma-mode').value = config.normaMode || 'onsite_only';
+    document.getElementById('cfg-norma-onsite').value = config.normaOnsite ?? 3;
+    document.getElementById('cfg-norma-start').value = config.normaStart || 'after';
+    document.getElementById('cfg-under-quota-penalty').value = config.underQuotaPenalty ? 'true' : 'false';
     document.getElementById('cfg-price-onsite').value = config.priceOnsite;
     document.getElementById('cfg-price-stream').value = config.priceStream;
-    document.getElementById('cfg-norma-onsite').value = config.normaOnsite;
-    document.getElementById('cfg-norma-stream').value = config.normaStream;
-    document.getElementById('cfg-perf-rate').value = Math.round(config.perfBackRate * 100);
-    document.getElementById('cfg-equip-fee').value = config.equipFeePerBand;
+    document.getElementById('cfg-norma-stream').value = config.normaStream ?? 0;
+    document.getElementById('cfg-perf-rate').value = Math.round((config.perfBackRate ?? 0.5) * 100);
+    document.getElementById('cfg-equip-fee').value = config.equipFeePerBand ?? 0;
     document.getElementById('cfg-equip-in-total').value = config.equipInTotal ? 'true' : 'false';
 
     document.querySelectorAll('.unit-price-onsite').forEach(el => el.textContent = `¥${fmt(config.priceOnsite)}`);
@@ -627,21 +656,25 @@
 
     // Update table meta description
     let metaText = `リアル ¥${fmt(config.priceOnsite)} / 配信 ¥${fmt(config.priceStream)}`;
+    const startText = config.normaStart === 'after' ? `${config.normaOnsite + 1}枚目以降から` : `${config.normaOnsite}枚目から`;
     if (config.normaMode === 'onsite_only') {
-      metaText += ` ｜ 現地${config.normaOnsite}枚目から${Math.round(config.perfBackRate*100)}%バック（配信はノルマなし）`;
+      metaText += ` ｜ 現地ノルマ${config.normaOnsite}枚 (${startText}${Math.round(config.perfBackRate*100)}%バック・配信は全バック)`;
     } else if (config.normaMode === 'each') {
-      metaText += ` ｜ 現地${config.normaOnsite}枚目・配信${config.normaStream}枚目から${Math.round(config.perfBackRate*100)}%バック`;
+      metaText += ` ｜ 現地${config.normaOnsite}枚 / 配信${config.normaStream}枚 ノルマ`;
     } else {
-      metaText += ` ｜ 合計${config.normaOnsite}枚目から${Math.round(config.perfBackRate*100)}%バック`;
+      metaText += ` ｜ 現地＋配信 合計${config.normaOnsite}枚 ノルマ`;
     }
+    if (config.underQuotaPenalty) metaText += ' ｜ 未達時負担あり';
     document.getElementById('table-summary-meta').textContent = metaText;
   }
 
   function updateConfig() {
     config.normaMode = document.getElementById('cfg-norma-mode').value;
+    config.normaOnsite = Math.max(0, parseFloat(document.getElementById('cfg-norma-onsite').value) || 0);
+    config.normaStart = document.getElementById('cfg-norma-start').value;
+    config.underQuotaPenalty = document.getElementById('cfg-under-quota-penalty').value === 'true';
     config.priceOnsite = Math.max(0, parseInt(document.getElementById('cfg-price-onsite').value) || 0);
     config.priceStream = Math.max(0, parseInt(document.getElementById('cfg-price-stream').value) || 0);
-    config.normaOnsite = Math.max(0, parseFloat(document.getElementById('cfg-norma-onsite').value) || 0);
     config.normaStream = Math.max(0, parseFloat(document.getElementById('cfg-norma-stream').value) || 0);
     config.perfBackRate = Math.max(0, (parseFloat(document.getElementById('cfg-perf-rate').value) || 50) / 100);
     config.equipFeePerBand = Math.max(0, parseInt(document.getElementById('cfg-equip-fee').value) || 0);
@@ -650,7 +683,6 @@
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
     applyConfigToUI();
     recalc();
-    showToast('⚙️ 条件設定を更新しました', 'ok');
   }
 
   function resetConfigToDefault() {
@@ -719,49 +751,92 @@
     return list.findIndex(t => totalSales >= t.min && totalSales < t.max);
   }
 
-  // ─── Performer Calculation ───────────────────────────
+  // ─── Performer Calculation (Dynamic Quota & Penalty) ─
   function calcPerformer(r) {
     if (!r.isPerformer) {
-      return { realBack: 0, streamBack: 0, totalBack: 0, equipFee: 0, netSettlement: 0 };
+      return { realBack: 0, streamBack: 0, totalBack: 0, penalty: 0, equipFee: 0, netSettlement: 0, statusHtml: '<span class="quota-pill none">—</span>' };
     }
 
     let realBack = 0;
     let streamBack = 0;
+    let penalty = 0;
+    let statusHtml = '';
+
+    const onsite = r.onsite || 0;
+    const stream = r.stream || 0;
+    const quotaOnsite = config.normaOnsite || 0;
+    // 控除枚数: 'after' (4枚目以降) なら quotaOnsite枚控除, 'at' (3枚目から) なら quotaOnsite-1枚控除
+    const deductOnsite = config.normaStart === 'at' ? Math.max(0, quotaOnsite - 1) : quotaOnsite;
 
     if (config.normaMode === 'onsite_only') {
-      // 現地のみノルマ（例: 3枚目から50%バック -> 2枚控除）
-      const onsiteDeduct = Math.max(0, config.normaOnsite - 1);
-      const eligibleOnsite = Math.max(0, (r.onsite || 0) - onsiteDeduct);
-      realBack = eligibleOnsite * config.priceOnsite * config.perfBackRate;
-      // 配信はノルマなし（全枚数がバック対象）
-      streamBack = (r.stream || 0) * config.priceStream * config.perfBackRate;
-    } else if (config.normaMode === 'each') {
-      // 現地・配信それぞれにノルマ
-      const onsiteDeduct = Math.max(0, config.normaOnsite - 1);
-      const streamDeduct = Math.max(0, config.normaStream - 1);
-      const eligibleOnsite = Math.max(0, (r.onsite || 0) - onsiteDeduct);
-      const eligibleStream = Math.max(0, (r.stream || 0) - streamDeduct);
-      realBack = eligibleOnsite * config.priceOnsite * config.perfBackRate;
-      streamBack = eligibleStream * config.priceStream * config.perfBackRate;
-    } else {
-      // 合計枚数でノルマ判定
-      const totalCount = (r.onsite || 0) + (r.stream || 0);
-      const deduct = Math.max(0, config.normaOnsite - 1);
-      if (totalCount > deduct) {
+      // 現地のみノルマ判定
+      if (onsite > deductOnsite) {
+        realBack = (onsite - deductOnsite) * config.priceOnsite * config.perfBackRate;
+        const extra = onsite - quotaOnsite;
+        statusHtml = extra > 0 ? `<span class="quota-pill achieved">達成 +${extra}枚</span>` : `<span class="quota-pill exact">達成 (ちょうど)</span>`;
+      } else if (onsite === quotaOnsite) {
+        statusHtml = `<span class="quota-pill exact">達成 (ちょうど)</span>`;
+      } else {
+        const shortage = quotaOnsite - onsite;
+        if (config.underQuotaPenalty && shortage > 0) {
+          penalty = shortage * config.priceOnsite;
+          statusHtml = `<span class="quota-pill shortage">不足 ${shortage}枚 (-¥${fmt(penalty)})</span>`;
+        } else {
+          statusHtml = shortage > 0 ? `<span class="quota-pill shortage">不足 ${shortage}枚</span>` : `<span class="quota-pill exact">達成</span>`;
+        }
+      }
+      // 配信はノルマなしで全枚数バック
+      streamBack = stream * config.priceStream * config.perfBackRate;
+
+    } else if (config.normaMode === 'combined') {
+      // 合計ノルマ判定
+      const totalTickets = onsite + stream;
+      const deductTotal = config.normaStart === 'at' ? Math.max(0, quotaOnsite - 1) : quotaOnsite;
+      if (totalTickets > deductTotal) {
         // 現地優先でノルマ消化
-        const remainingNorma = deduct;
-        const onsiteUsedForNorma = Math.min(r.onsite || 0, remainingNorma);
-        const streamUsedForNorma = Math.min(r.stream || 0, remainingNorma - onsiteUsedForNorma);
-        realBack = Math.max(0, (r.onsite || 0) - onsiteUsedForNorma) * config.priceOnsite * config.perfBackRate;
-        streamBack = Math.max(0, (r.stream || 0) - streamUsedForNorma) * config.priceStream * config.perfBackRate;
+        const remainingDeduct = deductTotal;
+        const onsiteUsed = Math.min(onsite, remainingDeduct);
+        const streamUsed = Math.min(stream, remainingDeduct - onsiteUsed);
+        realBack = Math.max(0, onsite - onsiteUsed) * config.priceOnsite * config.perfBackRate;
+        streamBack = Math.max(0, stream - streamUsed) * config.priceStream * config.perfBackRate;
+        const extra = totalTickets - quotaOnsite;
+        statusHtml = extra > 0 ? `<span class="quota-pill achieved">達成 +${extra}枚</span>` : `<span class="quota-pill exact">達成 (ちょうど)</span>`;
+      } else {
+        const shortage = quotaOnsite - totalTickets;
+        if (config.underQuotaPenalty && shortage > 0) {
+          penalty = shortage * config.priceOnsite;
+          statusHtml = `<span class="quota-pill shortage">不足 ${shortage}枚 (-¥${fmt(penalty)})</span>`;
+        } else {
+          statusHtml = shortage > 0 ? `<span class="quota-pill shortage">不足 ${shortage}枚</span>` : `<span class="quota-pill exact">達成</span>`;
+        }
+      }
+
+    } else {
+      // 現地・配信それぞれにノルマ
+      const quotaStream = config.normaStream || 0;
+      const deductStream = config.normaStart === 'at' ? Math.max(0, quotaStream - 1) : quotaStream;
+
+      if (onsite > deductOnsite) realBack = (onsite - deductOnsite) * config.priceOnsite * config.perfBackRate;
+      if (stream > deductStream) streamBack = (stream - deductStream) * config.priceStream * config.perfBackRate;
+
+      let shortageOnsite = Math.max(0, quotaOnsite - onsite);
+      let shortageStream = Math.max(0, quotaStream - stream);
+      if (config.underQuotaPenalty) {
+        penalty = (shortageOnsite * config.priceOnsite) + (shortageStream * config.priceStream);
+      }
+      if (shortageOnsite === 0 && shortageStream === 0) {
+        statusHtml = `<span class="quota-pill achieved">全達成</span>`;
+      } else {
+        statusHtml = `<span class="quota-pill shortage">未達 (${shortageOnsite+shortageStream}枚不足)</span>`;
       }
     }
 
     const totalBack = realBack + streamBack;
     const equipFee = config.equipFeePerBand;
-    const netSettlement = totalBack - equipFee;
+    // 最終受渡額: バック合計 − 未達負担額 − 機材費
+    const netSettlement = totalBack - penalty - equipFee;
 
-    return { realBack, streamBack, totalBack, equipFee, netSettlement };
+    return { realBack, streamBack, totalBack, penalty, equipFee, netSettlement, statusHtml };
   }
 
   // ─── Master Calculation ───────────────────────────────
@@ -785,17 +860,18 @@
     const totalSales  = realSales + streamSales + equipSales;
 
     const perfBackTotal = rowCalcs.reduce((sum, item) => sum + item.res.totalBack, 0);
+    const perfPenaltyTotal = rowCalcs.reduce((sum, item) => sum + (item.res.penalty || 0), 0);
 
     // miya Rate based on totalSales
     const miyaRate = getMiyaRate(totalSales, dt);
     const totalBack = totalSales * miyaRate;
     const miyaBack = totalBack - perfBackTotal;
-    const venueNet = totalSales - totalBack;
+    const venueNet = totalSales - totalBack + perfPenaltyTotal;
 
     return {
       dt, realCount, streamCount, performerCount,
       realSales, streamSales, equipSales, totalSales,
-      perfBackTotal, miyaRate, totalBack, miyaBack, venueNet,
+      perfBackTotal, perfPenaltyTotal, miyaRate, totalBack, miyaBack, venueNet,
       rowCalcs
     };
   }
@@ -834,6 +910,7 @@
             <button class="step-btn" onclick="stepVal(${idx},'stream',1)">＋</button>
           </div>
         </td>
+        <td style="text-align:center;" id="qb-${idx}">—</td>
         <td class="currency" id="rb-${idx}">¥0</td>
         <td class="currency" id="sb-${idx}">¥0</td>
         <td class="currency" id="tb-${idx}">¥0</td>
@@ -856,6 +933,7 @@
 
     // Row Cells
     calc.rowCalcs.forEach(({ r, res }, idx) => {
+      const elQb = document.getElementById(`qb-${idx}`);
       const elRb = document.getElementById(`rb-${idx}`);
       const elSb = document.getElementById(`sb-${idx}`);
       const elTb = document.getElementById(`tb-${idx}`);
@@ -863,6 +941,7 @@
       if (!elRb) return;
 
       if (!r.isPerformer) {
+        if (elQb) elQb.innerHTML = '<span class="quota-pill none">—</span>';
         elRb.innerHTML = '<span class="currency zero">—</span>';
         elSb.innerHTML = '<span class="currency zero">—</span>';
         elTb.innerHTML = '<span class="currency zero">—</span>';
@@ -870,6 +949,7 @@
         return;
       }
 
+      if (elQb) elQb.innerHTML = res.statusHtml;
       elRb.textContent = `¥${fmt(res.realBack)}`;
       elSb.textContent = `¥${fmt(res.streamBack)}`;
       elTb.textContent = `¥${fmt(res.totalBack)}`;
@@ -904,8 +984,9 @@
       const str = document.createElement('tr');
       const netClass = res.netSettlement >= 0 ? 'currency pos' : 'currency neg';
       const netText = res.netSettlement >= 0 ? `+¥${fmt(res.netSettlement)}` : `-¥${fmt(Math.abs(res.netSettlement))}`;
+      const penaltyNote = res.penalty > 0 ? ` <span style="font-size:10px; color:var(--danger);">(未達 -¥${fmt(res.penalty)})</span>` : '';
       str.innerHTML = `
-        <td style="font-weight:600;">${esc(r.name)}</td>
+        <td style="font-weight:600;">${esc(r.name)}${penaltyNote}</td>
         <td class="currency">¥${fmt(res.totalBack)}</td>
         <td class="currency">¥${fmt(res.equipFee)}</td>
         <td class="${netClass}">${netText}</td>
