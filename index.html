@@ -365,6 +365,13 @@
         </select>
       </div>
       <div class="field">
+        <label>ノルマ不足負担金の売上反映</label>
+        <select id="cfg-quota-penalty-in-total" onchange="updateConfig()">
+          <option value="false" selected>後で個別精算（チャージ計には含めない）</option>
+          <option value="true">当日のチャージ計（総売上）に合算</option>
+        </select>
+      </div>
+      <div class="field">
         <label>リアルチケット単価 (¥)</label>
         <input type="number" id="cfg-price-onsite" value="2500" step="100" min="0" oninput="updateConfig()" onchange="updateConfig()">
       </div>
@@ -459,13 +466,33 @@
       </table>
     </div>
 
+    <!-- Performer Template Manager Panel (Collapsible) -->
+    <div id="performer-template-panel" style="display:none; padding:12px 16px; background:var(--card-alt); border-top:1px solid var(--border);">
+      <div style="font-size:12px; font-weight:700; color:var(--text); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <span>👥 出演者リストの保存・呼び出し（テンプレート管理）</span>
+        <button class="toggle-btn" style="padding:2px 8px; font-size:10px;" onclick="togglePerformerTemplatePanel()">閉じる ✕</button>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+        <input type="text" id="tpl-name-input" placeholder="テンプレート名（例：レギュラー企画5組）" style="width:240px; font-size:12px; padding:6px 10px;">
+        <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="saveCurrentPerformerTemplate()">💾 現在の出演者をテンプレート保存</button>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">保存済みテンプレートから一発セット：</div>
+      <div id="performer-template-list" style="display:flex; gap:6px; flex-wrap:wrap;">
+        <!-- Dynamic templates -->
+      </div>
+    </div>
+
     <div class="table-actions">
       <button class="btn btn-secondary" onclick="addRow('performer')">＋ 出演者を追加</button>
       <button class="btn btn-secondary" onclick="addRow('general')">＋ 一般枠を追加 (miya / 全体 / 不明等)</button>
+      <button class="btn btn-secondary" onclick="togglePerformerTemplatePanel()">👥 演者テンプレート保存/呼出</button>
       <button class="btn btn-danger-ghost" onclick="clearAllInputs()">🗑️ チケット枚数リセット</button>
       <button class="btn btn-secondary" style="margin-left:auto;" onclick="fullResetAll()">🔄 完全リセット（初期化）</button>
     </div>
   </section>
+
+  <!-- Autocomplete Datalist for Performers -->
+  <datalist id="performer-master-list"></datalist>
 
   <!-- ③ Summary Panel (PDF Accurate) -->
   <section class="card">
@@ -567,16 +594,17 @@
 <script>
   // ─── Default Configuration ──────────────────────────
   const DEFAULT_CONFIG = {
-    normaMode: 'onsite_only', // 'onsite_only', 'combined', 'each'
+    normaMode: 'onsite_only',       // 'onsite_only', 'combined', 'each'
     priceOnsite: 2500,
     priceStream: 2000,
-    normaOnsite: 3,           // 現地ノルマ枚数 (3枚)
-    normaStream: 0,           // 配信ノルマ枚数
-    normaStart: 'after',      // 'after' (4枚目以降からバック = 3枚控除) / 'at' (3枚目からバック = 2枚控除)
-    underQuotaPenalty: true,  // 未達成時の不足分を演者負担にするか
-    perfBackRate: 0.5,        // 50%
-    equipFeePerBand: 0,       // 1組あたり機材費 (0円で機材費なし)
-    equipInTotal: false       // 機材費をチャージ計に含めるか
+    normaOnsite: 3,                 // 現地ノルマ枚数 (3枚)
+    normaStream: 0,                 // 配信ノルマ枚数
+    normaStart: 'after',            // 'after' (4枚目以降からバック) / 'at' (3枚目からバック)
+    underQuotaPenalty: true,        // 未達成時の不足分を演者負担にするか
+    quotaPenaltyInTotal: false,     // ノルマ不足負担金をチャージ計(売上)に含めるか (false: 後で個別精算)
+    perfBackRate: 0.5,              // 50%
+    equipFeePerBand: 0,             // 1組あたり機材費 (0円で機材費なし)
+    equipInTotal: false             // 機材費をチャージ計に含めるか
   };
 
   // ─── Default Rows (8/14 NEPO standard format) ────────
@@ -610,9 +638,10 @@
     ]
   };
 
-  const STORAGE_KEY_SAVED   = 'nepo_calc_saved_v3';
-  const STORAGE_KEY_CONFIG  = 'nepo_calc_config_v3';
-  const STORAGE_KEY_CURRENT = 'nepo_calc_current_draft_v3';
+  const STORAGE_KEY_SAVED     = 'nepo_calc_saved_v3';
+  const STORAGE_KEY_CONFIG    = 'nepo_calc_config_v3';
+  const STORAGE_KEY_CURRENT   = 'nepo_calc_current_draft_v3';
+  const STORAGE_KEY_TEMPLATES = 'nepo_perf_templates_v3';
 
   // ─── State ───────────────────────────────────────────
   let config = loadConfig();
@@ -672,6 +701,8 @@
     renderTable();
     recalc();
     renderHistory();
+    renderPerformerTemplateList();
+    updatePerformerMasterDatalist();
   });
 
   // ─── Config Management ───────────────────────────────
@@ -687,6 +718,7 @@
     document.getElementById('cfg-norma-onsite').value = config.normaOnsite ?? 3;
     document.getElementById('cfg-norma-start').value = config.normaStart || 'after';
     document.getElementById('cfg-under-quota-penalty').value = config.underQuotaPenalty ? 'true' : 'false';
+    document.getElementById('cfg-quota-penalty-in-total').value = config.quotaPenaltyInTotal ? 'true' : 'false';
     document.getElementById('cfg-price-onsite').value = config.priceOnsite;
     document.getElementById('cfg-price-stream').value = config.priceStream;
     document.getElementById('cfg-norma-stream').value = config.normaStream ?? 0;
@@ -708,7 +740,9 @@
     } else {
       metaText += ` ｜ 現地＋配信 合計${config.normaOnsite}枚 ノルマ`;
     }
-    if (config.underQuotaPenalty) metaText += ' ｜ 未達時負担あり';
+    if (config.underQuotaPenalty) {
+      metaText += config.quotaPenaltyInTotal ? ' ｜ 未達分は売上担保' : ' ｜ 未達分は後で個別精算';
+    }
     document.getElementById('table-summary-meta').textContent = metaText;
   }
 
@@ -717,6 +751,7 @@
     config.normaOnsite = Math.max(0, parseFloat(document.getElementById('cfg-norma-onsite').value) || 0);
     config.normaStart = document.getElementById('cfg-norma-start').value;
     config.underQuotaPenalty = document.getElementById('cfg-under-quota-penalty').value === 'true';
+    config.quotaPenaltyInTotal = document.getElementById('cfg-quota-penalty-in-total').value === 'true';
     config.priceOnsite = Math.max(0, parseInt(document.getElementById('cfg-price-onsite').value) || 0);
     config.priceStream = Math.max(0, parseInt(document.getElementById('cfg-price-stream').value) || 0);
     config.normaStream = Math.max(0, parseFloat(document.getElementById('cfg-norma-stream').value) || 0);
@@ -903,8 +938,9 @@
     const perfPenaltyTotal = rowCalcs.reduce((sum, item) => sum + (item.res.penalty || 0), 0);
     const equipSales  = config.equipInTotal ? (performerCount * config.equipFeePerBand) : 0;
 
-    // チャージ計（総売上）＝ リアル実売 + 配信実売 + ノルマ不足負担金(売上担保) + 機材費
-    const totalSales  = realSales + streamSales + perfPenaltyTotal + equipSales;
+    // チャージ計（総売上）： quotaPenaltyInTotal が true の場合は不足負担金も売上に担保合算
+    const penaltyInSales = config.quotaPenaltyInTotal ? perfPenaltyTotal : 0;
+    const totalSales  = realSales + streamSales + penaltyInSales + equipSales;
 
     const perfBackTotal = rowCalcs.reduce((sum, item) => sum + item.res.totalBack, 0);
 
@@ -912,11 +948,13 @@
     const miyaRate = getMiyaRate(totalSales, dt);
     const totalBack = totalSales * miyaRate;
     const miyaBack = totalBack - perfBackTotal;
-    const venueNet = totalSales - totalBack;
+
+    // 会場手残り： 総売上 − バック総額 ＋ (後で個別回収する不足金)
+    const venueNet = (totalSales - totalBack) + (config.quotaPenaltyInTotal ? 0 : perfPenaltyTotal);
 
     return {
       dt, realCount, streamCount, performerCount,
-      realSales, streamSales, perfPenaltyTotal, equipSales, totalSales,
+      realSales, streamSales, perfPenaltyTotal, penaltyInSales, equipSales, totalSales,
       perfBackTotal, miyaRate, totalBack, miyaBack, venueNet,
       rowCalcs
     };
@@ -939,7 +977,7 @@
         <td>
           <div class="pname-wrap">
             ${catBadge}
-            <input type="text" class="pname-input" value="${esc(r.name)}" oninput="updateRowName(${idx}, this.value)">
+            <input type="text" class="pname-input" list="performer-master-list" value="${esc(r.name)}" oninput="updateRowName(${idx}, this.value)">
           </div>
         </td>
         <td>
@@ -965,6 +1003,8 @@
       `;
       tbody.appendChild(tr);
     });
+
+    updatePerformerMasterDatalist();
   }
 
   // ─── Recalc & DOM Update ─────────────────────────────
@@ -1132,6 +1172,133 @@
     recalc();
     saveWorkingDraft();
     showToast('標準リストにリセットしました', 'ok');
+  }
+
+  // ─── Performer Template Management ──────────────────
+  function togglePerformerTemplatePanel() {
+    const el = document.getElementById('performer-template-panel');
+    if (el) {
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+      if (el.style.display === 'block') renderPerformerTemplateList();
+    }
+  }
+
+  function getPerformerTemplates() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY_TEMPLATES)) || [];
+    } catch { return []; }
+  }
+
+  function savePerformerTemplates(list) {
+    try {
+      localStorage.setItem(STORAGE_KEY_TEMPLATES, JSON.stringify(list));
+    } catch {}
+  }
+
+  function saveCurrentPerformerTemplate() {
+    const inputEl = document.getElementById('tpl-name-input');
+    const name = inputEl ? inputEl.value.trim() : '';
+    if (!name) {
+      showToast('テンプレート名を入力してください', 'err');
+      return;
+    }
+
+    const templateRows = state.rows.map(r => ({
+      name: r.name,
+      isPerformer: r.isPerformer,
+      onsite: 0,
+      stream: 0
+    }));
+
+    const templates = getPerformerTemplates();
+    const existIdx = templates.findIndex(t => t.name === name);
+    const entry = {
+      id: Date.now(),
+      name,
+      rows: templateRows,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (existIdx >= 0) {
+      if (!confirm(`テンプレート「${name}」は既に存在します。上書きしますか？`)) return;
+      templates[existIdx] = entry;
+    } else {
+      templates.unshift(entry);
+    }
+
+    savePerformerTemplates(templates);
+    if (inputEl) inputEl.value = '';
+    renderPerformerTemplateList();
+    updatePerformerMasterDatalist();
+    showToast(`👥 演者テンプレート「${name}」を保存しました！`, 'ok');
+  }
+
+  function loadPerformerTemplate(idx) {
+    const templates = getPerformerTemplates();
+    const tpl = templates[idx];
+    if (!tpl) return;
+    if (!confirm(`テンプレート「${tpl.name}」の出演者リストを適用しますか？\n（現在のチケット枚数は 0 にリセットされます）`)) return;
+
+    state.rows = JSON.parse(JSON.stringify(tpl.rows)).map(r => ({
+      name: r.name,
+      isPerformer: r.isPerformer,
+      onsite: 0,
+      stream: 0
+    }));
+
+    renderTable();
+    recalc();
+    saveWorkingDraft();
+    showToast(`👥 テンプレート「${tpl.name}」を読み込みました`, 'ok');
+  }
+
+  function deletePerformerTemplate(idx) {
+    const templates = getPerformerTemplates();
+    const tpl = templates[idx];
+    if (!confirm(`テンプレート「${tpl ? tpl.name : ''}」を削除しますか？`)) return;
+    templates.splice(idx, 1);
+    savePerformerTemplates(templates);
+    renderPerformerTemplateList();
+    showToast('削除しました', 'ok');
+  }
+
+  function renderPerformerTemplateList() {
+    const container = document.getElementById('performer-template-list');
+    if (!container) return;
+    const templates = getPerformerTemplates();
+
+    if (!templates.length) {
+      container.innerHTML = '<span style="font-size:11px; color:var(--text-faint);">まだ保存されたテンプレートはありません。上の入力欄から保存できます。</span>';
+      return;
+    }
+
+    container.innerHTML = templates.map((t, idx) => `
+      <div style="display:inline-flex; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:3px 8px; gap:6px; font-size:11px;">
+        <span style="font-weight:700; cursor:pointer;" onclick="loadPerformerTemplate(${idx})" title="クリックしてこの演者リストを呼び出す">👥 ${esc(t.name)} (${t.rows.length}組)</span>
+        <button style="background:none; border:none; color:var(--text-faint); cursor:pointer; font-size:12px;" onclick="deletePerformerTemplate(${idx})" title="削除">×</button>
+      </div>
+    `).join('');
+  }
+
+  function updatePerformerMasterDatalist() {
+    const datalist = document.getElementById('performer-master-list');
+    if (!datalist) return;
+
+    const names = new Set();
+    // From current rows
+    state.rows.forEach(r => { if (r.name) names.add(r.name); });
+    // From standard rows
+    STANDARD_ROWS.forEach(r => names.add(r.name));
+    // From templates
+    getPerformerTemplates().forEach(t => {
+      (t.rows || []).forEach(r => { if (r.name) names.add(r.name); });
+    });
+    // From saved history
+    (state.saved || []).forEach(s => {
+      (s.rows || []).forEach(r => { if (r.name) names.add(r.name); });
+    });
+
+    datalist.innerHTML = Array.from(names).map(n => `<option value="${esc(n)}">`).join('');
   }
 
   // ─── Save & History ──────────────────────────────────
