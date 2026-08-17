@@ -275,6 +275,7 @@
       </div>
     </a>
     <div class="header-actions">
+      <button class="toggle-btn" onclick="clearAllInputs()" style="color:var(--danger); border-color:rgba(248,113,113,0.3);">🗑️ 枚数を全部クリア</button>
       <button class="toggle-btn" onclick="toggleSettings()">⚙️ 条件・店舗設定</button>
       <button class="toggle-btn" onclick="loadSamplePDFData()">📄 8/14実績例をロード</button>
     </div>
@@ -396,7 +397,8 @@
     <div class="table-actions">
       <button class="btn btn-secondary" onclick="addRow('performer')">＋ 出演者を追加</button>
       <button class="btn btn-secondary" onclick="addRow('general')">＋ 一般枠を追加 (miya / 全体 / 不明等)</button>
-      <button class="btn btn-secondary" style="margin-left:auto;" onclick="resetToStandardNEPO()">↺ 標準メンバーに戻す</button>
+      <button class="btn btn-danger-ghost" onclick="clearAllInputs()">🗑️ 枚数を全部0にクリア</button>
+      <button class="btn btn-secondary" style="margin-left:auto;" onclick="fullResetAll()">🔄 完全リセット（初期化）</button>
     </div>
   </section>
 
@@ -889,6 +891,37 @@
     state.rows.splice(idx, 1);
     renderTable();
     recalc();
+  }
+
+  function clearAllInputs() {
+    if (!confirm('すべての入力枚数を 0 にリセットしますか？\n（出演者名や区分はそのまま残ります）')) return;
+    state.rows.forEach(r => {
+      r.onsite = 0;
+      r.stream = 0;
+    });
+    const noteEl = document.getElementById('save-note');
+    if (noteEl) noteEl.value = '';
+    renderTable();
+    recalc();
+    showToast('🗑️ すべての枚数を 0 にクリアしました', 'ok');
+  }
+
+  function fullResetAll() {
+    if (!confirm('完全リセットしますか？\n出演者リスト・入力枚数・設定が初期状態に戻ります。')) return;
+    state.rows = JSON.parse(JSON.stringify(STANDARD_ROWS)).map(r => ({
+      name: r.name,
+      onsite: 0,
+      stream: 0,
+      isPerformer: r.isPerformer
+    }));
+    config = Object.assign({}, DEFAULT_CONFIG);
+    localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+    applyConfigToUI();
+    const noteEl = document.getElementById('save-note');
+    if (noteEl) noteEl.value = '';
+    renderTable();
+    recalc();
+    showToast('🔄 初期状態に完全リセットしました', 'ok');
   }
 
   function resetToStandardNEPO() {
