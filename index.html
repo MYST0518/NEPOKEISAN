@@ -482,7 +482,8 @@
           <div class="sum-list">
             <div class="sum-item">リアル売上 (<span id="s-real-count">0</span>名) <strong id="s-real-sales">¥0</strong></div>
             <div class="sum-item">配信売上 (<span id="s-stream-count">0</span>名) <strong id="s-stream-sales">¥0</strong></div>
-            <div class="sum-item">機材費 (<span id="s-equip-count">0</span>組 × ¥<span id="s-equip-unit">5,000</span>) <strong id="s-equip-sales">¥0</strong></div>
+            <div class="sum-item" id="s-penalty-item">ノルマ不足負担金 (売上担保) <strong id="s-penalty-sales" style="color:var(--warning);">¥0</strong></div>
+            <div class="sum-item" id="s-equip-item">機材費 (<span id="s-equip-count">0</span>組 × ¥<span id="s-equip-unit">0</span>) <strong id="s-equip-sales">¥0</strong></div>
           </div>
         </div>
 
@@ -899,22 +900,24 @@
 
     const realSales   = realCount * config.priceOnsite;
     const streamSales = streamCount * config.priceStream;
+    const perfPenaltyTotal = rowCalcs.reduce((sum, item) => sum + (item.res.penalty || 0), 0);
     const equipSales  = config.equipInTotal ? (performerCount * config.equipFeePerBand) : 0;
-    const totalSales  = realSales + streamSales + equipSales;
+
+    // チャージ計（総売上）＝ リアル実売 + 配信実売 + ノルマ不足負担金(売上担保) + 機材費
+    const totalSales  = realSales + streamSales + perfPenaltyTotal + equipSales;
 
     const perfBackTotal = rowCalcs.reduce((sum, item) => sum + item.res.totalBack, 0);
-    const perfPenaltyTotal = rowCalcs.reduce((sum, item) => sum + (item.res.penalty || 0), 0);
 
     // miya Rate based on totalSales
     const miyaRate = getMiyaRate(totalSales, dt);
     const totalBack = totalSales * miyaRate;
     const miyaBack = totalBack - perfBackTotal;
-    const venueNet = totalSales - totalBack + perfPenaltyTotal;
+    const venueNet = totalSales - totalBack;
 
     return {
       dt, realCount, streamCount, performerCount,
-      realSales, streamSales, equipSales, totalSales,
-      perfBackTotal, perfPenaltyTotal, miyaRate, totalBack, miyaBack, venueNet,
+      realSales, streamSales, perfPenaltyTotal, equipSales, totalSales,
+      perfBackTotal, miyaRate, totalBack, miyaBack, venueNet,
       rowCalcs
     };
   }
@@ -1009,8 +1012,19 @@
     document.getElementById('s-real-sales').textContent = `¥${fmt(calc.realSales)}`;
     document.getElementById('s-stream-count').textContent = calc.streamCount;
     document.getElementById('s-stream-sales').textContent = `¥${fmt(calc.streamSales)}`;
-    document.getElementById('s-equip-count').textContent = calc.performerCount;
-    document.getElementById('s-equip-sales').textContent = `¥${fmt(calc.equipSales)}`;
+
+    const penaltyItem = document.getElementById('s-penalty-item');
+    if (penaltyItem) {
+      document.getElementById('s-penalty-sales').textContent = `¥${fmt(calc.perfPenaltyTotal)}`;
+      penaltyItem.style.display = calc.perfPenaltyTotal > 0 ? 'flex' : 'none';
+    }
+
+    const equipItem = document.getElementById('s-equip-item');
+    if (equipItem) {
+      document.getElementById('s-equip-count').textContent = calc.performerCount;
+      document.getElementById('s-equip-sales').textContent = `¥${fmt(calc.equipSales)}`;
+      equipItem.style.display = calc.equipSales > 0 ? 'flex' : 'none';
+    }
 
     const ratePercent = Math.round(calc.miyaRate * 100);
     document.getElementById('s-back-rate').textContent = `${ratePercent}%バック`;
@@ -1027,7 +1041,7 @@
       const str = document.createElement('tr');
       const netClass = res.netSettlement >= 0 ? 'currency pos' : 'currency neg';
       const netText = res.netSettlement >= 0 ? `+¥${fmt(res.netSettlement)}` : `-¥${fmt(Math.abs(res.netSettlement))}`;
-      const penaltyNote = res.penalty > 0 ? ` <span style="font-size:10px; color:var(--danger);">(未達 -¥${fmt(res.penalty)})</span>` : '';
+      const penaltyNote = res.penalty > 0 ? ` <span style="font-size:10px; color:var(--danger);">(未達不足 -¥${fmt(res.penalty)})</span>` : '';
       str.innerHTML = `
         <td style="font-weight:600;">${esc(r.name)}${penaltyNote}</td>
         <td class="currency">¥${fmt(res.totalBack)}</td>
@@ -1435,6 +1449,7 @@
           <div class="label">配信売上 (${calc.streamCount}名)</div>
           <div class="value">¥${fmt(calc.streamSales)}</div>
         </div>
+        ${calc.perfPenaltyTotal > 0 ? `<div class="ps-box"><div class="label">ノルマ不足負担金 (売上担保)</div><div class="value">¥${fmt(calc.perfPenaltyTotal)}</div></div>` : ''}
         ${config.equipFeePerBand > 0 ? `<div class="ps-box"><div class="label">機材費 (${calc.performerCount}組 × ¥${fmt(config.equipFeePerBand)})</div><div class="value">¥${fmt(calc.equipSales)}</div></div>` : ''}
         <div class="ps-box">
           <div class="label">演者バック計</div>
