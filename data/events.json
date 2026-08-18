@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:06:11.943Z",
+  "updatedAt": "2026-08-18T03:06:13.344Z",
   "saved": [
     {
-      "id": 1787022371511,
+      "id": 1787022372855,
       "date": "2026-08-18",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -54,7 +54,7 @@
           "isPerformer": true
         },
         {
-          "name": "",
+          "name": "miya",
           "onsite": 0,
           "stream": 0,
           "isPerformer": false
