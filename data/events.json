@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:04:52.341Z",
+  "updatedAt": "2026-08-18T03:05:04.226Z",
   "saved": [
     {
-      "id": 1787022291925,
+      "id": 1787022303795,
       "date": "2026-08-18",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -15,11 +15,12 @@
         "normaOnsite": 3,
         "normaStart": "after",
         "underQuotaPenalty": true,
-        "quotaPenaltyInTotal": false,
-        "streamBackMode": "from_1st",
+        "quotaPenaltyInTotal": true,
+        "streamBackMode": "from_3rd",
         "perfBackRate": 0.5,
         "equipFeePerBand": 0,
-        "equipInTotal": false
+        "equipInTotal": false,
+        "normaStream": 0
       },
       "rows": [
         {
@@ -33,21 +34,83 @@
           "onsite": 0,
           "stream": 0,
           "isPerformer": true
+        },
+        {
+          "name": "",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": true
         }
       ],
       "results": {
-        "totalSales": 18500,
+        "totalSales": 33500,
         "hasOrganizer": true,
-        "organizerRate": 0,
-        "organizerBack": 0,
-        "totalBack": 0,
-        "perfBackTotal": 5500,
-        "perfPenaltyTotal": 7500,
-        "venueNet": 26000
+        "organizerRate": 0.25,
+        "organizerBack": 4875,
+        "totalBack": 8375,
+        "perfBackTotal": 3500,
+        "perfPenaltyTotal": 15000,
+        "venueNet": 25125
       }
     }
   ],
-  "templates": [],
+  "templates": [
+    {
+      "id": 1786986582710,
+      "name": "まこあいもむち誕生会",
+      "rows": [
+        {
+          "name": "MakotoAI",
+          "isPerformer": true,
+          "onsite": 0,
+          "stream": 0
+        },
+        {
+          "name": "MoMu ＆ TeaSteam",
+          "isPerformer": true,
+          "onsite": 0,
+          "stream": 0
+        },
+        {
+          "name": "JACKPOT031",
+          "isPerformer": true,
+          "onsite": 0,
+          "stream": 0
+        },
+        {
+          "name": "妖精アーヤさん",
+          "isPerformer": true,
+          "onsite": 0,
+          "stream": 0
+        },
+        {
+          "name": "未定",
+          "isPerformer": true,
+          "onsite": 0,
+          "stream": 0
+        },
+        {
+          "name": "miya",
+          "isPerformer": false,
+          "onsite": 0,
+          "stream": 0
+        },
+        {
+          "name": "イベント全体",
+          "isPerformer": false,
+          "onsite": 0,
+          "stream": 0
+        },
+        {
+          "name": "お目当て不明",
+          "isPerformer": false,
+          "onsite": 0,
+          "stream": 0
+        }
+      ],
+      "updatedAt": "2026-08-17T17:09:42.710Z"
+    }
+  ],
   "config": {
     "normaMode": "onsite_only",
     "priceOnsite": 2500,
@@ -55,10 +118,11 @@
     "normaOnsite": 3,
     "normaStart": "after",
     "underQuotaPenalty": true,
-    "quotaPenaltyInTotal": false,
-    "streamBackMode": "from_1st",
+    "quotaPenaltyInTotal": true,
+    "streamBackMode": "from_3rd",
     "perfBackRate": 0.5,
     "equipFeePerBand": 0,
-    "equipInTotal": false
+    "equipInTotal": false,
+    "normaStream": 0
   }
 }
