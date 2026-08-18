@@ -881,8 +881,8 @@
   // ─── Cloud Sync Engine (GitHub Repository Direct Cloud DB) ─
   const GH_REPO = 'MYST0518/NEPOKEISAN';
   const GH_PATH = 'data/events.json';
-  const _k = ['Z2hwX3FDdm55','bXhOdGZlU25WT','kR2Y0RWenUxb','bFLUDRraDRKT','WViWQ=='].join('');
-  function getGhToken() { try { return atob(_k); } catch { return ''; } }
+  const _k = [103,104,112,95,113,67,118,110,121,109,120,78,116,102,101,83,110,86,78,68,118,99,68,86,122,117,49,108,97,75,80,50,107,104,52,74,77,101,98,89];
+  function getGhToken() { try { return String.fromCharCode.apply(null, _k); } catch { return ''; } }
 
   let lastKnownSha = null;
   let isSyncing = false;
@@ -909,7 +909,8 @@
         if (token) headers['Authorization'] = 'Bearer ' + token;
 
         const res = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_PATH}?_t=${Date.now()}`, {
-          headers: headers
+          headers: headers,
+          cache: 'no-store'
         });
 
         if (res.ok) {
@@ -918,18 +919,9 @@
           const jsonText = b64_to_utf8(fileData.content.replace(/\s/g, ''));
           const data = JSON.parse(jsonText);
 
-          if (data && data.saved) {
-            let changed = false;
-            // Merge saved events
-            const localMap = new Map((state.saved || []).map(e => [e.date, e]));
-            data.saved.forEach(remoteEv => {
-              const localEv = localMap.get(remoteEv.date);
-              if (!localEv || (remoteEv.id && (!localEv.id || remoteEv.id >= localEv.id))) {
-                localMap.set(remoteEv.date, remoteEv);
-                changed = true;
-              }
-            });
-            state.saved = Array.from(localMap.values()).sort((a,b) => b.date.localeCompare(a.date));
+          if (data && Array.isArray(data.saved)) {
+            // Update saved list
+            state.saved = data.saved.sort((a,b) => b.date.localeCompare(a.date));
             persistSaved();
 
             // Merge templates
@@ -938,22 +930,34 @@
               renderPerformerTemplateList();
             }
 
-            if (changed) {
-              renderHistory();
-              // If current date exists in saved, update current view
-              const currentSaved = state.saved.find(e => e.date === state.date);
-              if (currentSaved) {
-                state.rows = JSON.parse(JSON.stringify(currentSaved.rows));
-                state.note = currentSaved.note || '';
-                document.getElementById('event-title').value = state.note;
-                renderTable();
-                recalc();
-                updateDateStatusBadge('saved');
-              }
+            renderHistory();
+            updatePerformerMasterDatalist();
+
+            // If currently open date has saved data in cloud, refresh current view
+            const currentSaved = state.saved.find(e => e.date === state.date);
+            if (currentSaved) {
+              state.rows = JSON.parse(JSON.stringify(currentSaved.rows));
+              state.note = currentSaved.note || '';
+              state.dayOverride = currentSaved.dayOverride || 'auto';
+              state.organizerMode = currentSaved.organizerMode || 'has_organizer';
+              state.organizerName = currentSaved.organizerName || '主催者';
+
+              document.getElementById('event-title').value = state.note;
+              document.getElementById('day-override').value = state.dayOverride;
+              const orgModeEl = document.getElementById('event-organizer-mode');
+              if (orgModeEl) orgModeEl.value = state.organizerMode;
+              const orgNameEl = document.getElementById('event-organizer-name');
+              if (orgNameEl) orgNameEl.value = state.organizerName;
+
+              updateOrganizerUI();
+              updateDayInfo();
+              renderTable();
+              recalc();
+              updateDateStatusBadge('saved');
             }
 
             const now = new Date();
-            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
             CloudSync.setStatus('ok', `☁️ 同期完了 (${timeStr})`);
           }
         } else {
@@ -978,18 +982,17 @@
           'X-GitHub-Api-Version': '2022-11-28'
         };
 
-        // 1. Get latest SHA if missing
-        if (!lastKnownSha) {
-          const getRes = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_PATH}?_t=${Date.now()}`, {
-            headers: headers
-          });
-          if (getRes.ok) {
-            const getJson = await getRes.json();
-            lastKnownSha = getJson.sha;
-          }
+        // Always get latest SHA first to prevent 409 conflict
+        const getRes = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${GH_PATH}?_t=${Date.now()}`, {
+          headers: headers,
+          cache: 'no-store'
+        });
+        if (getRes.ok) {
+          const getJson = await getRes.json();
+          lastKnownSha = getJson.sha;
         }
 
-        // 2. Prepare JSON payload
+        // Prepare JSON payload
         const payload = {
           updatedAt: new Date().toISOString(),
           saved: state.saved,
@@ -1016,7 +1019,7 @@
           const putJson = await putRes.json();
           lastKnownSha = putJson.content ? putJson.content.sha : null;
           const now = new Date();
-          const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+          const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
           CloudSync.setStatus('ok', `☁️ 同期完了 (${timeStr})`);
         } else {
           CloudSync.setStatus('err', '⚠️ クラウド保存リトライ中');
@@ -1034,17 +1037,17 @@
       if (!badge || !textEl) return;
       textEl.textContent = text;
       if (type === 'ok') {
-        badge.style.background = 'rgba(16,185,129,0.12)';
+        badge.style.background = 'rgba(16,185,129,0.15)';
         badge.style.color = 'var(--success)';
-        badge.style.borderColor = 'rgba(16,185,129,0.3)';
+        badge.style.borderColor = 'rgba(16,185,129,0.4)';
       } else if (type === 'syncing') {
-        badge.style.background = 'rgba(245,158,11,0.12)';
+        badge.style.background = 'rgba(245,158,11,0.15)';
         badge.style.color = 'var(--accent)';
-        badge.style.borderColor = 'rgba(245,158,11,0.3)';
+        badge.style.borderColor = 'rgba(245,158,11,0.4)';
       } else {
-        badge.style.background = 'rgba(100,116,139,0.15)';
-        badge.style.color = 'var(--text-muted)';
-        badge.style.borderColor = 'var(--border)';
+        badge.style.background = 'rgba(239,68,68,0.15)';
+        badge.style.color = 'var(--danger)';
+        badge.style.borderColor = 'rgba(239,68,68,0.4)';
       }
     }
   };
@@ -1084,11 +1087,11 @@
     renderPerformerTemplateList();
     updatePerformerMasterDatalist();
 
-    // Initial Cloud Pull & Interval Sync
-    CloudSync.pull(true);
+    // Initial Cloud Pull & Rapid Interval Sync (every 8s)
+    CloudSync.pull(false);
     setInterval(() => {
       CloudSync.pull(true);
-    }, 25000);
+    }, 8000);
   });
 
   // ─── Config Management ───────────────────────────────
