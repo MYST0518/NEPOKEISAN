@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:10:08.859Z",
+  "updatedAt": "2026-08-18T03:10:10.442Z",
   "saved": [
     {
-      "id": 1787022608422,
+      "id": 1787022609979,
       "date": "2026-10-02",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -25,7 +25,7 @@
         {
           "name": "MakotoAI",
           "onsite": 4,
-          "stream": 2,
+          "stream": 4,
           "isPerformer": true
         },
         {
@@ -72,14 +72,14 @@
         }
       ],
       "results": {
-        "totalSales": 119500,
+        "totalSales": 123500,
         "hasOrganizer": true,
-        "organizerRate": 0.4,
-        "organizerBack": 19800,
-        "totalBack": 47800,
-        "perfBackTotal": 28000,
+        "organizerRate": 0.5,
+        "organizerBack": 31750,
+        "totalBack": 61750,
+        "perfBackTotal": 30000,
         "perfPenaltyTotal": 0,
-        "venueNet": 71700
+        "venueNet": 61750
       }
     },
     {
