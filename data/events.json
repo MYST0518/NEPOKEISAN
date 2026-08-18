@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:05:26.277Z",
+  "updatedAt": "2026-08-18T03:05:31.698Z",
   "saved": [
     {
-      "id": 1787022325851,
+      "id": 1787022331281,
       "date": "2026-08-18",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -30,7 +30,7 @@
           "onsite": 5
         },
         {
-          "name": "",
+          "name": "MoMu",
           "onsite": 0,
           "stream": 0,
           "isPerformer": true
