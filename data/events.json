@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:09:37.588Z",
+  "updatedAt": "2026-08-18T03:09:41.817Z",
   "saved": [
     {
-      "id": 1787022576810,
+      "id": 1787022581388,
       "date": "2026-10-02",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -55,7 +55,7 @@
         {
           "name": "主催者",
           "onsite": 0,
-          "stream": 6,
+          "stream": 8,
           "isPerformer": false
         },
         {
@@ -72,14 +72,14 @@
         }
       ],
       "results": {
-        "totalSales": 86500,
+        "totalSales": 90500,
         "hasOrganizer": true,
-        "organizerRate": 0.3,
-        "organizerBack": 4950,
-        "totalBack": 25950,
+        "organizerRate": 0.4,
+        "organizerBack": 15200,
+        "totalBack": 36200,
         "perfBackTotal": 21000,
         "perfPenaltyTotal": 5000,
-        "venueNet": 65550
+        "venueNet": 59300
       }
     },
     {
