@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:08:17.531Z",
+  "updatedAt": "2026-08-18T03:08:34.286Z",
   "saved": [
     {
-      "id": 1787022497104,
+      "id": 1787022513852,
       "date": "2026-10-02",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -41,7 +41,7 @@
           "isPerformer": true
         },
         {
-          "name": "",
+          "name": "妖精アーヤさん",
           "onsite": 0,
           "stream": 0,
           "isPerformer": true
