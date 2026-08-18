@@ -1,6 +1,87 @@
 {
-  "updatedAt": "2026-08-18T03:07:54.647Z",
+  "updatedAt": "2026-08-18T03:08:02.194Z",
   "saved": [
+    {
+      "id": 1787022481757,
+      "date": "2026-10-02",
+      "dayOverride": "auto",
+      "organizerMode": "has_organizer",
+      "organizerName": "主催者",
+      "note": "",
+      "config": {
+        "normaMode": "onsite_only",
+        "priceOnsite": 2500,
+        "priceStream": 2000,
+        "normaOnsite": 3,
+        "normaStart": "after",
+        "underQuotaPenalty": true,
+        "quotaPenaltyInTotal": false,
+        "streamBackMode": "from_1st",
+        "perfBackRate": 0.5,
+        "equipFeePerBand": 0,
+        "equipInTotal": false
+      },
+      "rows": [
+        {
+          "name": "MakotoAI",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": true
+        },
+        {
+          "name": "",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": true
+        },
+        {
+          "name": "",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": true
+        },
+        {
+          "name": "",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": true
+        },
+        {
+          "name": "",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": true
+        },
+        {
+          "name": "主催者",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": false
+        },
+        {
+          "name": "イベント全体",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": false
+        },
+        {
+          "name": "お目当て不明",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": false
+        }
+      ],
+      "results": {
+        "totalSales": 0,
+        "hasOrganizer": true,
+        "organizerRate": 0,
+        "organizerBack": 0,
+        "totalBack": 0,
+        "perfBackTotal": 0,
+        "perfPenaltyTotal": 37500,
+        "venueNet": 37500
+      }
+    },
     {
       "id": 1787022474214,
       "date": "2026-08-18",
