@@ -1969,7 +1969,9 @@
     const d = state.date ? new Date(state.date + 'T12:00:00') : new Date();
     const days = ['日','月','火','水','木','金','土'];
     const dateStr = state.date ? `${state.date}（${days[d.getDay()]}）` : '未設定';
-    const ratePercent = Math.round(calc.miyaRate * 100);
+    const hasOrg = calc.hasOrganizer;
+    const orgName = (state.organizerName || '主催者').trim();
+    const ratePercent = Math.round((calc.organizerRate || 0) * 100);
     const now = new Date();
     const printedAt = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
