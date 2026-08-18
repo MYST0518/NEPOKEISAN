@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:05:04.226Z",
+  "updatedAt": "2026-08-18T03:05:06.476Z",
   "saved": [
     {
-      "id": 1787022303795,
+      "id": 1787022306022,
       "date": "2026-08-18",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -40,17 +40,23 @@
           "onsite": 0,
           "stream": 0,
           "isPerformer": true
+        },
+        {
+          "name": "",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": true
         }
       ],
       "results": {
-        "totalSales": 33500,
+        "totalSales": 41000,
         "hasOrganizer": true,
         "organizerRate": 0.25,
-        "organizerBack": 4875,
-        "totalBack": 8375,
+        "organizerBack": 6750,
+        "totalBack": 10250,
         "perfBackTotal": 3500,
-        "perfPenaltyTotal": 15000,
-        "venueNet": 25125
+        "perfPenaltyTotal": 22500,
+        "venueNet": 30750
       }
     }
   ],
