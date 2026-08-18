@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:13:56.718Z",
+  "updatedAt": "2026-08-18T03:14:11.715Z",
   "saved": [
     {
-      "id": 1787022836276,
+      "id": 1787022851289,
       "date": "2026-10-02",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -49,7 +49,7 @@
         {
           "name": "未定",
           "onsite": 3,
-          "stream": 2,
+          "stream": 3,
           "isPerformer": true
         },
         {
@@ -72,14 +72,14 @@
         }
       ],
       "results": {
-        "totalSales": 119500,
+        "totalSales": 121500,
         "hasOrganizer": true,
-        "organizerRate": 0.4,
-        "organizerBack": 18550,
-        "totalBack": 47800,
-        "perfBackTotal": 29250,
+        "organizerRate": 0.5,
+        "organizerBack": 30500,
+        "totalBack": 60750,
+        "perfBackTotal": 30250,
         "perfPenaltyTotal": 0,
-        "venueNet": 71700
+        "venueNet": 60750
       }
     },
     {
