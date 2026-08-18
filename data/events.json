@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:06:07.492Z",
+  "updatedAt": "2026-08-18T03:06:11.943Z",
   "saved": [
     {
-      "id": 1787022367025,
+      "id": 1787022371511,
       "date": "2026-08-18",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -54,7 +54,7 @@
           "isPerformer": true
         },
         {
-          "name": "一般枠",
+          "name": "",
           "onsite": 0,
           "stream": 0,
           "isPerformer": false
