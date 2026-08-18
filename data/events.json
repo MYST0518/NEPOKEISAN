@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:05:06.476Z",
+  "updatedAt": "2026-08-18T03:05:09.666Z",
   "saved": [
     {
-      "id": 1787022306022,
+      "id": 1787022309221,
       "date": "2026-08-18",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -46,17 +46,29 @@
           "onsite": 0,
           "stream": 0,
           "isPerformer": true
+        },
+        {
+          "name": "",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": true
+        },
+        {
+          "name": "一般枠",
+          "onsite": 0,
+          "stream": 0,
+          "isPerformer": false
         }
       ],
       "results": {
-        "totalSales": 41000,
+        "totalSales": 48500,
         "hasOrganizer": true,
         "organizerRate": 0.25,
-        "organizerBack": 6750,
-        "totalBack": 10250,
+        "organizerBack": 8625,
+        "totalBack": 12125,
         "perfBackTotal": 3500,
-        "perfPenaltyTotal": 22500,
-        "venueNet": 30750
+        "perfPenaltyTotal": 30000,
+        "venueNet": 36375
       }
     }
   ],
