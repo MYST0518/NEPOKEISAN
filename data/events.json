@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:10:01.950Z",
+  "updatedAt": "2026-08-18T03:10:04.681Z",
   "saved": [
     {
-      "id": 1787022601483,
+      "id": 1787022604240,
       "date": "2026-10-02",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -42,13 +42,13 @@
         },
         {
           "name": "妖精アーヤさん",
-          "onsite": 5,
+          "onsite": 6,
           "stream": 10,
           "isPerformer": true
         },
         {
           "name": "未定",
-          "onsite": 2,
+          "onsite": 3,
           "stream": 2,
           "isPerformer": true
         },
@@ -72,14 +72,14 @@
         }
       ],
       "results": {
-        "totalSales": 110500,
+        "totalSales": 115500,
         "hasOrganizer": true,
         "organizerRate": 0.4,
-        "organizerBack": 19450,
-        "totalBack": 44200,
-        "perfBackTotal": 24750,
-        "perfPenaltyTotal": 2500,
-        "venueNet": 68800
+        "organizerBack": 20200,
+        "totalBack": 46200,
+        "perfBackTotal": 26000,
+        "perfPenaltyTotal": 0,
+        "venueNet": 69300
       }
     },
     {
