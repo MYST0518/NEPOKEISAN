@@ -275,39 +275,83 @@
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.ok { color: var(--success); border-color: var(--success); }
 
-    /* ─── Print-only 明細書 (hidden on screen) ─── */
-    #print-sheet { display: none; }
+    /* ─── Print-only 明細書 / 説明書 (hidden on screen) ─── */
+    #print-sheet, #manual-print-sheet { display: none; }
 
     @media print {
-      *, *::before, *::after { color: #000 !important; background: #fff !important; border-color: #ccc !important; box-shadow: none !important; }
-      body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', sans-serif; font-size: 11px; line-height: 1.6; }
-      .header, .main, .toast { display: none !important; }
-      #print-sheet { display: block !important; padding: 12mm 14mm; }
+      @page {
+        size: A4 portrait;
+        margin: 10mm 12mm 10mm 12mm;
+      }
+      *, *::before, *::after {
+        box-sizing: border-box !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color: #000 !important;
+        background: #fff !important;
+        border-color: #bbb !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+      html, body {
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
+        font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', -apple-system, sans-serif !important;
+        font-size: 9pt !important;
+        line-height: 1.35 !important;
+      }
+      .header, .main, .toast, .modal-backdrop { display: none !important; }
+      #print-sheet, #manual-print-sheet {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+      }
 
-      .ps-title { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 4px; letter-spacing: .05em; }
-      .ps-subtitle { text-align: center; font-size: 11px; color: #666; margin-bottom: 16px; }
-      .ps-meta { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #000; }
-      .ps-section { font-size: 12px; font-weight: 700; margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #999; }
+      .ps-title { font-size: 16pt; font-weight: 800; text-align: center; margin-bottom: 2px; letter-spacing: .08em; }
+      .ps-subtitle { text-align: center; font-size: 8.5pt; color: #555; margin-bottom: 8px; }
+      .ps-meta {
+        display: flex; justify-content: space-between; font-size: 8pt; margin-bottom: 6px; padding-bottom: 5px;
+        border-bottom: 1.5pt solid #000; line-height: 1.4;
+      }
+      .ps-section {
+        font-size: 9pt; font-weight: 700; margin: 8px 0 3px; padding-bottom: 2px;
+        border-bottom: 1pt solid #000;
+      }
 
-      .ps-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px; }
-      .ps-table th { background: #eee !important; padding: 5px 7px; text-align: left; font-weight: 700; border: 1px solid #aaa; white-space: nowrap; }
-      .ps-table td { padding: 5px 7px; border: 1px solid #ccc; }
-      .ps-table .num { text-align: right; font-family: 'JetBrains Mono', monospace; }
-      .ps-table .total-row td { font-weight: 700; background: #f5f5f5 !important; border-top: 2px solid #000; }
+      .ps-table { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 6px; }
+      .ps-table th { background: #f0f0f0 !important; padding: 3px 5px; text-align: left; font-weight: 700; border: 0.5pt solid #888; white-space: nowrap; }
+      .ps-table td { padding: 3px 5px; border: 0.5pt solid #bbb; }
+      .ps-table .num { text-align: right; font-family: 'JetBrains Mono', Consolas, monospace; }
+      .ps-table .total-row td { font-weight: 700; background: #f9f9f9 !important; border-top: 1.5pt solid #000; }
 
-      .ps-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-      .ps-box { border: 1px solid #aaa; padding: 8px 10px; border-radius: 4px; }
-      .ps-box.wide { grid-column: 1 / -1; }
-      .ps-box .label { font-size: 9px; color: #666; text-transform: uppercase; letter-spacing: .05em; }
-      .ps-box .value { font-size: 16px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
-      .ps-box.accent { border: 2px solid #000; }
-      .ps-box.accent .value { font-size: 18px; }
+      .ps-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 6px; break-inside: avoid; page-break-inside: avoid; }
+      .ps-box { border: 0.5pt solid #888; padding: 4px 6px; border-radius: 3px; background: #fff !important; }
+      .ps-box.wide { grid-column: span 2; }
+      .ps-box .label { font-size: 7pt; color: #555; text-transform: uppercase; margin-bottom: 1px; }
+      .ps-box .value { font-size: 10.5pt; font-weight: 800; font-family: 'JetBrains Mono', Consolas, monospace; }
+      .ps-box.accent { border: 1.5pt solid #000; }
+      .ps-box.accent .value { font-size: 11.5pt; }
 
-      .ps-footer { margin-top: 24px; font-size: 9px; color: #999; text-align: center; border-top: 1px solid #ddd; padding-top: 8px; }
-      .ps-stamp { margin-top: 16px; display: flex; justify-content: flex-end; gap: 40px; }
-      .ps-stamp-box { width: 80px; height: 80px; border: 1px solid #aaa; display: flex; align-items: flex-end; justify-content: center; font-size: 9px; color: #aaa; padding-bottom: 4px; }
+      .ps-stamp { margin-top: 8px; display: flex; justify-content: flex-end; gap: 20px; break-inside: avoid; page-break-inside: avoid; }
+      .ps-stamp-box { width: 60px; height: 60px; border: 0.5pt solid #888; display: flex; align-items: flex-end; justify-content: center; font-size: 7.5pt; color: #888; padding-bottom: 2px; }
+      .ps-footer { margin-top: 10px; font-size: 7pt; color: #888; text-align: center; border-top: 0.5pt solid #ccc; padding-top: 3px; }
 
-      @page { size: A4; margin: 10mm; }
+      /* Manual Print Styles */
+      .man-title { font-size: 18pt; font-weight: 800; text-align: center; margin-bottom: 4px; }
+      .man-subtitle { font-size: 9pt; text-align: center; color: #555; margin-bottom: 14px; }
+      .man-chapter { font-size: 11pt; font-weight: 700; margin: 12px 0 6px; padding-bottom: 3px; border-bottom: 1.5pt solid #000; page-break-after: avoid; break-after: avoid; }
+      .man-card { border: 0.5pt solid #aaa; border-radius: 4px; padding: 8px 10px; margin-bottom: 8px; break-inside: avoid; page-break-inside: avoid; }
+      .man-card-title { font-weight: 700; font-size: 9.5pt; margin-bottom: 4px; color: #111; }
+      .man-p { font-size: 8.5pt; line-height: 1.5; color: #333; margin-bottom: 4px; }
+      .man-list { font-size: 8.5pt; line-height: 1.5; padding-left: 18px; margin: 4px 0; }
+      .man-badge { display: inline-block; padding: 1px 5px; border-radius: 3px; border: 0.5pt solid #555; font-size: 7.5pt; font-weight: 700; }
+      .man-page-break { page-break-after: always; break-after: page; }
     }
   </style>
 </head>
@@ -327,6 +371,7 @@
         <span class="sync-dot" style="width:7px; height:7px; border-radius:50%; background:currentColor; display:inline-block;"></span>
         <span id="sync-status-text">☁️ クラウド同期中</span>
       </div>
+      <button class="toggle-btn" onclick="openManualModal()" style="border-color:var(--accent); color:var(--accent);">📖 操作説明書</button>
       <button class="toggle-btn" onclick="clearAllInputs()" style="color:var(--danger); border-color:rgba(248,113,113,0.3);">🗑️ 枚数クリア</button>
       <button class="toggle-btn" onclick="toggleSettings()">⚙️ 条件・店舗設定</button>
     </div>
@@ -593,15 +638,19 @@
     </div>
   </section>
 
-  <!-- PDF Export Button -->
+  <!-- PDF Export & Manual Section -->
   <section class="card">
     <div class="card-head">
-      <span class="card-title">📄 PDF明細書出力</span>
+      <span class="card-title">📄 PDF出力 &amp; 操作マニュアル</span>
     </div>
     <div class="card-body">
-      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="exportPDF()" style="font-size:14px; padding:12px 24px;">📄 PDF明細書を出力する</button>
-        <span style="font-size:12px; color:var(--text-muted);">ブラウザの印刷画面が開きます → 「PDFに保存」を選択してください</span>
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="exportPDF()" style="font-size:13px; padding:10px 20px;">📄 当日のPDF明細書を出力</button>
+        <button class="btn btn-secondary" onclick="exportManualPDF()" style="font-size:13px; padding:10px 20px; border-color:var(--accent); color:var(--accent);">📖 NEPO専用 操作マニュアル（PDF出力）</button>
+        <button class="btn btn-secondary" onclick="openManualModal()" style="font-size:13px; padding:10px 16px;">👁️ マニュアルを画面で読む</button>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+        ※印刷ダイアログが開きます。「送信先 / プリンター」で<strong>「PDFに保存」</strong>を選択すると綺麗なA4 PDFファイルとしてダウンロードできます。
       </div>
     </div>
   </section>
@@ -631,8 +680,33 @@
 
 </main>
 
-<!-- Hidden print-only sheet -->
+<!-- Hidden print-only sheet for Settlement -->
 <div id="print-sheet"></div>
+
+<!-- Hidden print-only sheet for Manual -->
+<div id="manual-print-sheet"></div>
+
+<!-- Manual On-Screen Modal -->
+<div id="manual-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; padding:20px; box-sizing:border-box; overflow-y:auto;">
+  <div style="max-width:860px; margin:0 auto; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px 28px; box-shadow:0 12px 36px rgba(0,0,0,0.6);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:14px; margin-bottom:16px;">
+      <div>
+        <h2 style="margin:0; font-size:18px; color:var(--accent);">📖 吉祥寺NEPO 精算システム 完全操作マニュアル</h2>
+        <div style="font-size:12px; color:var(--text-muted);">スタッフ・店長・PA・受付用 取扱説明書</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-primary" onclick="exportManualPDF()">📄 PDFとして印刷・保存</button>
+        <button class="btn btn-secondary" onclick="closeManualModal()">閉じる ✕</button>
+      </div>
+    </div>
+    <div id="manual-modal-body" style="font-size:13px; line-height:1.7; color:var(--text);">
+      <!-- Rendered dynamically -->
+    </div>
+    <div style="margin-top:20px; text-align:right; border-top:1px solid var(--border); padding-top:12px;">
+      <button class="btn btn-secondary" onclick="closeManualModal()">閉じる ✕</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -2102,6 +2176,117 @@
       <div class="ps-footer">出力日時: ${printedAt} ｜ 吉祥寺NEPO 精算・収益計算システム</div>
     `;
 
+    window.print();
+  }
+
+  // ─── Manual Modal & PDF Manual Export ────────────────
+  const MANUAL_BODY_CONTENT = `
+    <div class="man-card" style="border-left:4px solid var(--accent); background:var(--card-alt); margin-bottom:16px; padding:12px 16px;">
+      <div class="man-card-title" style="font-size:15px; margin-bottom:6px; color:var(--accent);">📌 吉祥寺NEPO 精算・収益計算システムとは</div>
+      <div class="man-p">本システムは、吉祥寺NEPOの現地チケット・配信（ツイキャス）チケットの売上管理、出演者バック計算、主催者バック計算、会場手残りの算出をリアルタイムに自動化する公式精算システムです。</div>
+      <div class="man-p">パソコン（店PC・スタッフ私物PC）、スマートフォン（iPhone・Android）、タブレット（iPad等）、<strong>どのブラウザから開いても全データがリアルタイムに自動同期</strong>されます。</div>
+    </div>
+
+    <div class="man-chapter" style="font-size:14px; font-weight:700; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:4px; margin:16px 0 10px;">
+      【第1章】 毎日の基本精算フロー（4ステップ）
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">① 開催日を選択</div>
+      <div class="man-p">画面上部の「開催日を選択」で該当日付を選びます。「◀ 前日」「翌日 ▶」「今日」ボタンで素早く切り替えられます。その日に登録されたデータが自動展開されます。</div>
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">② イベント名・イベント形式の入力</div>
+      <div class="man-p"><strong>イベント名：</strong> 例『まこあい生誕祭withもむち生誕祭』などを入力します（PDF明細書にも印字されます）。</div>
+      <div class="man-p"><strong>イベント形式：</strong>
+        <ul style="margin:4px 0 0 18px; padding:0;">
+          <li><strong>👑 主催者あり（売上連動バック）：</strong> 曜日別の売上閾値（25%〜50%）で主催者バックを自動算出します。主催者名も自由に変更可能です。</li>
+          <li><strong>🎸 主催なし（演者バックのみ）：</strong> ブッキングライブなど、純粋に出演者のバックのみを精算し、残りが会場手残りになります。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">③ 出演者の入力 ＆ チケット枚数カウント</div>
+      <div class="man-p">「＋ 出演者を追加」または「＋ 一般枠を追加」を押し、出演者名を入力します（過去の出演者名が予測候補に出ます）。</div>
+      <div class="man-p">リアル（¥2,500）および配信（¥2,000）のチケット枚数を「＋」「−」ボタンまたは数字キーで入力します。入力した瞬間に全自動で計算＆クラウド保存されます。</div>
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">④ PDF明細書の出力・印刷・保存</div>
+      <div class="man-p">「📄 当日のPDF明細書を出力」ボタンを押すと、印刷プレビューが開きます。送信先で<strong>「PDFに保存」</strong>を選択すると、A4ジャストサイズの綺麗な精算書PDFがダウンロードできます。</div>
+    </div>
+
+    <div class="man-chapter" style="font-size:14px; font-weight:700; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:4px; margin:16px 0 10px;">
+      【第2章】 クラウド全端末リアルタイム自動同期（PC・スマホ・iPad）
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">☁️ 全端末自動同期の仕組み</div>
+      <div class="man-p">アカウント登録やログインは一切不要です。NEPOの専用クラウドデータベース（GitHub Storage）と自動通信します。</div>
+      <ul style="margin:4px 0 0 18px; padding:0;">
+        <li><strong>完全自動保存：</strong> 文字や枚数を入力するたびに、約0.8秒でクラウドへ自動送信されます。</li>
+        <li><strong>同期ステータス：</strong> 右上に <strong>「🟢 クラウド同期完了」</strong> と表示されていれば正常です。</li>
+        <li><strong>即時手動同期：</strong> 右上のバッジをクリックすると、いつでも手動で最新データを再取得できます。</li>
+      </ul>
+    </div>
+
+    <div class="man-chapter" style="font-size:14px; font-weight:700; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:4px; margin:16px 0 10px;">
+      【第3章】 チケット・ノルマ・バック計算ルール詳細
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">🎟️ チケット単価とバック率</div>
+      <ul style="margin:4px 0 0 18px; padding:0;">
+        <li><strong>現地チケット（リアル）：</strong> ¥2,500 / 枚。ノルマ3枚。4枚目以降から1枚につき50%バック（¥1,250 / 枚）。</li>
+        <li><strong>ノルマ未達時の負担：</strong> 現地動員が3枚未満の場合、不足1枚につき -¥2,500（後で個別精算）。</li>
+        <li><strong>配信チケット（ツイキャス）：</strong> ¥2,000 / 枚。1枚目から50%バック（¥1,000 / 枚）。ノルマ未達負担なし。</li>
+        <li><strong>主催者バック率の閾値（曜日自動判定）：</strong>
+          <div style="font-size:11px; margin-top:4px; color:var(--text-muted);">
+            ・月〜木: 〜3万(0%) / 3万〜(25%) / 5万〜(30%) / 7万〜(40%) / 10万〜(50%)<br>
+            ・金曜: 〜5万(0%) / 5万〜(25%) / 7万〜(30%) / 9万〜(40%) / 12万〜(50%)
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="man-chapter" style="font-size:14px; font-weight:700; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:4px; margin:16px 0 10px;">
+      【第4章】 便利な時短機能・テンプレート・バックアップ
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">👥 出演者テンプレート機能</div>
+      <div class="man-p">「👥 演者テンプレート保存/呼出」から、よく出演する定期企画バンドリストなどを名前をつけて保存しておくと、次回から1クリックで一発セットできます。</div>
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">📋 過去イベントからの出演者コピー</div>
+      <div class="man-p">画面下の「精算履歴一覧」にある各イベントの「📋 演者をコピー」を押すと、その日の出演者リストを現在の開催日に一瞬でコピーできます。</div>
+    </div>
+    <div class="man-card" style="background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin-bottom:10px;">
+      <div class="man-card-title">📦 全データバックアップ・復元</div>
+      <div class="man-p">「📤 全バックアップ保存」で全日程のデータをJSONファイルとして手元にダウンロードできます。「📥 ファイル復元」でいつでも復元可能です。</div>
+    </div>
+  `;
+
+  function openManualModal() {
+    const bodyEl = document.getElementById('manual-modal-body');
+    if (bodyEl) bodyEl.innerHTML = MANUAL_BODY_CONTENT;
+    const modal = document.getElementById('manual-modal');
+    if (modal) modal.style.display = 'block';
+  }
+
+  function closeManualModal() {
+    const modal = document.getElementById('manual-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function exportManualPDF() {
+    const now = new Date();
+    const printedAt = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`;
+    const sheet = document.getElementById('print-sheet');
+
+    sheet.innerHTML = `
+      <div class="man-title">吉祥寺NEPO 精算・収益計算システム</div>
+      <div class="man-subtitle">公式 操作マニュアル ＆ システム取扱説明書（全機能網羅版） ｜ 発行日: ${printedAt}</div>
+      ${MANUAL_BODY_CONTENT}
+      <div class="ps-footer">吉祥寺NEPO 精算・収益計算システム ｜ https://myst0518.github.io/NEPOKEISAN/</div>
+    `;
+
+    closeManualModal();
     window.print();
   }
 </script>
