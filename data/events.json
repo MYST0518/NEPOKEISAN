@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:09:15.150Z",
+  "updatedAt": "2026-08-18T03:09:16.813Z",
   "saved": [
     {
-      "id": 1787022554703,
+      "id": 1787022556362,
       "date": "2026-10-02",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -37,7 +37,7 @@
         {
           "name": "JACKPOT031",
           "onsite": 3,
-          "stream": 0,
+          "stream": 2,
           "isPerformer": true
         },
         {
@@ -72,14 +72,14 @@
         }
       ],
       "results": {
-        "totalSales": 54000,
+        "totalSales": 58000,
         "hasOrganizer": true,
         "organizerRate": 0.25,
-        "organizerBack": 1500,
-        "totalBack": 13500,
-        "perfBackTotal": 12000,
+        "organizerBack": 500,
+        "totalBack": 14500,
+        "perfBackTotal": 14000,
         "perfPenaltyTotal": 7500,
-        "venueNet": 48000
+        "venueNet": 51000
       }
     },
     {
