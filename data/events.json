@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:09:29.703Z",
+  "updatedAt": "2026-08-18T03:09:31.485Z",
   "saved": [
     {
-      "id": 1787022569273,
+      "id": 1787022571028,
       "date": "2026-10-02",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -30,7 +30,7 @@
         },
         {
           "name": "MoMu ＆ TeaSteam",
-          "onsite": 4,
+          "onsite": 5,
           "stream": 1,
           "isPerformer": true
         },
@@ -72,14 +72,14 @@
         }
       ],
       "results": {
-        "totalSales": 74000,
+        "totalSales": 76500,
         "hasOrganizer": true,
         "organizerRate": 0.3,
-        "organizerBack": 2450,
-        "totalBack": 22200,
-        "perfBackTotal": 19750,
+        "organizerBack": 1950,
+        "totalBack": 22950,
+        "perfBackTotal": 21000,
         "perfPenaltyTotal": 5000,
-        "venueNet": 56800
+        "venueNet": 58550
       }
     },
     {
