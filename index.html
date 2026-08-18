@@ -419,7 +419,7 @@
 
     <!-- Tier Rule Display -->
     <div class="tier-config-box">
-      <div class="tier-config-title">📊 @miyaバック率の閾値（曜日自動判定）</div>
+      <div class="tier-config-title">📊 主催者バック率の閾値（曜日自動判定）</div>
       <div style="display:flex; gap:20px; flex-wrap:wrap; font-size:12px;">
         <div><strong>月〜木:</strong> 〜3万(0%) / 3万〜(25%) / 5万〜(30%) / 7万〜(40%) / 10万〜(50%)</div>
         <div><strong>金曜:</strong> 〜5万(0%) / 5万〜(25%) / 7万〜(30%) / 9万〜(40%) / 12万〜(50%)</div>
@@ -437,9 +437,9 @@
       </div>
     </div>
     <div class="card-body">
-      <div class="top-controls" style="align-items:flex-end;">
-        <div class="field" style="min-width:240px;">
-          <label for="event-date">開催日を選択（日付ごとに自動ロード＆保存）</label>
+      <div class="top-controls" style="align-items:flex-end; gap:12px;">
+        <div class="field" style="min-width:230px;">
+          <label for="event-date">開催日を選択（自動ロード＆保存）</label>
           <div style="display:flex; gap:4px; align-items:center;">
             <button class="btn btn-secondary" style="padding:6px 10px;" onclick="shiftDate(-1)" title="前日へ">◀</button>
             <input type="date" id="event-date" style="flex:1;">
@@ -448,13 +448,26 @@
           </div>
         </div>
 
-        <div class="field" style="flex:1; min-width:220px;">
+        <div class="field" style="flex:1; min-width:200px;">
           <label for="event-title">イベント名 / メモ</label>
           <input type="text" id="event-title" placeholder="（例：NEPO pre. 『SOUND WAVE vol.12』）" oninput="onEventTitleChange(this.value)">
         </div>
 
-        <div class="field" style="min-width:140px;">
-          <label>適用ルール</label>
+        <div class="field" style="min-width:180px;">
+          <label for="event-organizer-mode">イベント形式（主催者設定）</label>
+          <select id="event-organizer-mode" onchange="onOrganizerModeChange(this.value)">
+            <option value="has_organizer" selected>👑 主催者あり（売上連動バック）</option>
+            <option value="no_organizer">🎸 主催なし（演者バックのみ）</option>
+          </select>
+        </div>
+
+        <div class="field" id="field-organizer-name" style="min-width:140px;">
+          <label for="event-organizer-name">主催者名</label>
+          <input type="text" id="event-organizer-name" value="主催者" placeholder="例：主催者 / @miya" oninput="onOrganizerNameChange(this.value)">
+        </div>
+
+        <div class="field" id="field-day-rule" style="min-width:130px;">
+          <label>曜日ルール</label>
           <select id="day-override" onchange="onDayRuleChange()">
             <option value="auto">自動判定 (日付から)</option>
             <option value="weekday">月〜木ルール強制</option>
@@ -516,7 +529,7 @@
 
     <div class="table-actions">
       <button class="btn btn-secondary" onclick="addRow('performer')">＋ 出演者を追加</button>
-      <button class="btn btn-secondary" onclick="addRow('general')">＋ 一般枠を追加 (miya / 全体 / 不明等)</button>
+      <button class="btn btn-secondary" onclick="addRow('general')">＋ 一般枠を追加 (主催 / 全体 / 不明等)</button>
       <button class="btn btn-secondary" onclick="togglePerformerTemplatePanel()">👥 演者テンプレート保存/呼出</button>
       <button class="btn btn-danger-ghost" onclick="clearAllInputs()">🗑️ チケット枚数リセット</button>
       <button class="btn btn-secondary" style="margin-left:auto;" onclick="fullResetAll()">🔄 完全リセット（初期化）</button>
@@ -530,7 +543,7 @@
   <section class="card">
     <div class="card-head">
       <span class="card-title">📊 収益・バック集計（精算明細）</span>
-      <div id="miya-rate-pill" class="day-pill weekday" style="height:26px; padding:2px 10px; font-size:11px;">50%バック</div>
+      <div id="organizer-rate-pill" class="day-pill weekday" style="height:26px; padding:2px 10px; font-size:11px;">50%バック</div>
     </div>
     <div class="card-body">
       <div class="summary-grid">
@@ -552,7 +565,7 @@
           <div class="sum-value" style="color:var(--accent);" id="s-total-back">¥0</div>
           <div class="sum-list">
             <div class="sum-item">演者バック計 <strong id="s-perf-back" style="color:var(--success);">¥0</strong></div>
-            <div class="sum-item">miyaさんバック <strong id="s-miya-back" style="color:var(--accent); font-size:15px;">¥0</strong></div>
+            <div class="sum-item"><span id="s-organizer-label">主催者バック</span> <strong id="s-organizer-back" style="color:var(--accent); font-size:15px;">¥0</strong></div>
             <div class="sum-item" style="border-top:1px solid var(--border); padding-top:4px;">会場手残り <strong id="s-venue-net">¥0</strong></div>
           </div>
         </div>
@@ -687,6 +700,8 @@
       return {
         date: curDate,
         dayOverride: todaySaved.dayOverride || 'auto',
+        organizerMode: todaySaved.organizerMode || 'has_organizer',
+        organizerName: todaySaved.organizerName || '主催者',
         note: todaySaved.note || '',
         rows: JSON.parse(JSON.stringify(todaySaved.rows)),
         saved: saved
@@ -699,6 +714,8 @@
         return {
           date: draft.date || curDate,
           dayOverride: draft.dayOverride || 'auto',
+          organizerMode: draft.organizerMode || 'has_organizer',
+          organizerName: draft.organizerName || '主催者',
           note: draft.note || '',
           rows: draft.rows,
           saved: saved
@@ -709,6 +726,8 @@
     return {
       date: curDate,
       dayOverride: 'auto',
+      organizerMode: 'has_organizer',
+      organizerName: '主催者',
       note: '',
       rows: createBlankDayRows(),
       saved: saved
@@ -722,7 +741,7 @@
       { name: '', onsite: 0, stream: 0, isPerformer: true },
       { name: '', onsite: 0, stream: 0, isPerformer: true },
       { name: '', onsite: 0, stream: 0, isPerformer: true },
-      { name: 'miya', onsite: 0, stream: 0, isPerformer: false },
+      { name: '主催者', onsite: 0, stream: 0, isPerformer: false },
       { name: 'イベント全体', onsite: 0, stream: 0, isPerformer: false },
       { name: 'お目当て不明', onsite: 0, stream: 0, isPerformer: false }
     ];
@@ -733,6 +752,8 @@
       const draft = {
         date: state.date,
         dayOverride: state.dayOverride,
+        organizerMode: state.organizerMode || 'has_organizer',
+        organizerName: state.organizerName || '主催者',
         note: state.note || '',
         rows: state.rows
       };
@@ -751,6 +772,8 @@
       state.rows = JSON.parse(JSON.stringify(existing.rows));
       state.note = existing.note || '';
       state.dayOverride = existing.dayOverride || 'auto';
+      state.organizerMode = existing.organizerMode || 'has_organizer';
+      state.organizerName = existing.organizerName || '主催者';
       if (existing.config) {
         config = Object.assign({}, DEFAULT_CONFIG, existing.config);
         applyConfigToUI();
@@ -761,6 +784,8 @@
       state.rows = createBlankDayRows();
       state.note = '';
       state.dayOverride = 'auto';
+      state.organizerMode = 'has_organizer';
+      state.organizerName = '主催者';
       updateDateStatusBadge('new');
     }
 
@@ -768,14 +793,41 @@
     document.getElementById('event-date').value = state.date;
     document.getElementById('event-title').value = state.note || '';
     document.getElementById('day-override').value = state.dayOverride;
+    document.getElementById('event-organizer-mode').value = state.organizerMode;
+    document.getElementById('event-organizer-name').value = state.organizerName;
     const saveBtnDateEl = document.getElementById('save-btn-date');
     if (saveBtnDateEl) saveBtnDateEl.textContent = state.date;
 
+    updateOrganizerUI();
     updateDayInfo();
     renderTable();
     recalc();
     saveWorkingDraft();
     renderHistory();
+  }
+
+  function onOrganizerModeChange(val) {
+    state.organizerMode = val;
+    updateOrganizerUI();
+    recalc();
+    triggerAutoSave();
+  }
+
+  function onOrganizerNameChange(val) {
+    state.organizerName = val.trim() || '主催者';
+    recalc();
+    triggerAutoSave();
+  }
+
+  function updateOrganizerUI() {
+    const isNoOrganizer = state.organizerMode === 'no_organizer';
+    const nameField = document.getElementById('field-organizer-name');
+    const dayRuleField = document.getElementById('field-day-rule');
+    const dayPill = document.getElementById('day-pill');
+
+    if (nameField) nameField.style.opacity = isNoOrganizer ? '0.4' : '1';
+    if (dayRuleField) dayRuleField.style.opacity = isNoOrganizer ? '0.4' : '1';
+    if (dayPill) dayPill.style.display = isNoOrganizer ? 'none' : 'inline-block';
   }
 
   function shiftDate(delta) {
@@ -1008,8 +1060,12 @@
     document.getElementById('event-date').value = state.date;
     document.getElementById('event-title').value = state.note || '';
     document.getElementById('day-override').value = state.dayOverride || 'auto';
-    const roomInput = document.getElementById('cfg-cloud-room');
-    if (roomInput) roomInput.value = cloudRoomId;
+    const orgModeEl = document.getElementById('event-organizer-mode');
+    if (orgModeEl) orgModeEl.value = state.organizerMode || 'has_organizer';
+    const orgNameEl = document.getElementById('event-organizer-name');
+    if (orgNameEl) orgNameEl.value = state.organizerName || '主催者';
+    updateOrganizerUI();
+
     const saveBtnDateEl = document.getElementById('save-btn-date');
     if (saveBtnDateEl) saveBtnDateEl.textContent = state.date;
 
@@ -1266,6 +1322,7 @@
   // ─── Master Calculation ───────────────────────────────
   function calculate() {
     const dt = getEffectiveDayType();
+    const hasOrganizer = (state.organizerMode || 'has_organizer') !== 'no_organizer';
 
     let realCount = 0;
     let streamCount = 0;
@@ -1289,18 +1346,18 @@
 
     const perfBackTotal = rowCalcs.reduce((sum, item) => sum + item.res.totalBack, 0);
 
-    // miya Rate based on totalSales
-    const miyaRate = getMiyaRate(totalSales, dt);
-    const totalBack = totalSales * miyaRate;
-    const miyaBack = totalBack - perfBackTotal;
+    // 主催者バック率 & バック計算 (主催ありの場合のみ)
+    const organizerRate = hasOrganizer ? getMiyaRate(totalSales, dt) : 0;
+    const totalBack = hasOrganizer ? (totalSales * organizerRate) : perfBackTotal;
+    const organizerBack = hasOrganizer ? Math.max(0, totalBack - perfBackTotal) : 0;
 
     // 会場手残り： 総売上 − バック総額 ＋ (後で個別回収する不足金)
     const venueNet = (totalSales - totalBack) + (config.quotaPenaltyInTotal ? 0 : perfPenaltyTotal);
 
     return {
-      dt, realCount, streamCount, performerCount,
+      dt, hasOrganizer, realCount, streamCount, performerCount,
       realSales, streamSales, perfPenaltyTotal, penaltyInSales, equipSales, totalSales,
-      perfBackTotal, miyaRate, totalBack, miyaBack, venueNet,
+      perfBackTotal, organizerRate, totalBack, organizerBack, venueNet,
       rowCalcs
     };
   }
@@ -1355,12 +1412,20 @@
   // ─── Recalc & DOM Update ─────────────────────────────
   function recalc() {
     const calc = calculate();
+    const hasOrganizer = calc.hasOrganizer;
+    const orgName = (state.organizerName || '主催者').trim();
 
     // Active Tier Pill
-    const tIdx = getTierIndex(calc.totalSales, calc.dt);
-    document.querySelectorAll('.tier-pill').forEach((el, i) => el.classList.toggle('active', i === tIdx));
-    document.getElementById('current-tier-info').textContent =
-      `チャージ計 ¥${fmt(calc.totalSales)} → バック率 ${Math.round(calc.miyaRate * 100)}%`;
+    if (hasOrganizer) {
+      const tIdx = getTierIndex(calc.totalSales, calc.dt);
+      document.querySelectorAll('.tier-pill').forEach((el, i) => el.classList.toggle('active', i === tIdx));
+      document.getElementById('current-tier-info').textContent =
+        `チャージ計 ¥${fmt(calc.totalSales)} → 主催者バック率 ${Math.round(calc.organizerRate * 100)}%`;
+    } else {
+      document.querySelectorAll('.tier-pill').forEach(el => el.classList.remove('active'));
+      document.getElementById('current-tier-info').textContent =
+        `主催なし（ブッキング・演者バックのみ）`;
+    }
 
     // Row Cells
     calc.rowCalcs.forEach(({ r, res }, idx) => {
@@ -1411,12 +1476,27 @@
       equipItem.style.display = calc.equipSales > 0 ? 'flex' : 'none';
     }
 
-    const ratePercent = Math.round(calc.miyaRate * 100);
-    document.getElementById('s-back-rate').textContent = `${ratePercent}%バック`;
-    document.getElementById('miya-rate-pill').textContent = `${ratePercent}%バック`;
+    const ratePercent = Math.round(calc.organizerRate * 100);
+    const rateLabel = hasOrganizer ? `${ratePercent}%バック` : '演者バックのみ';
+    document.getElementById('s-back-rate').textContent = rateLabel;
+
+    const ratePill = document.getElementById('organizer-rate-pill');
+    if (ratePill) {
+      ratePill.textContent = hasOrganizer ? `${ratePercent}%バック` : '主催なし';
+      ratePill.className = hasOrganizer ? `day-pill ${calc.dt}` : 'day-pill';
+    }
+
     document.getElementById('s-total-back').textContent = `¥${fmt(calc.totalBack)}`;
     document.getElementById('s-perf-back').textContent = `¥${fmt(calc.perfBackTotal)}`;
-    document.getElementById('s-miya-back').textContent = `¥${fmt(calc.miyaBack)}`;
+
+    const orgLabelEl = document.getElementById('s-organizer-label');
+    const orgBackEl = document.getElementById('s-organizer-back');
+    if (orgLabelEl) orgLabelEl.textContent = hasOrganizer ? `${orgName}バック` : '主催者バック';
+    if (orgBackEl) {
+      orgBackEl.textContent = hasOrganizer ? `¥${fmt(calc.organizerBack)}` : '— (主催なし)';
+      orgBackEl.style.color = hasOrganizer ? 'var(--accent)' : 'var(--text-faint)';
+    }
+
     document.getElementById('s-venue-net').textContent = `¥${fmt(calc.venueNet)}`;
 
     // Settlement Breakdown Table
@@ -1663,16 +1743,19 @@
       id: Date.now(),
       date: state.date,
       dayOverride: state.dayOverride,
+      organizerMode: state.organizerMode || 'has_organizer',
+      organizerName: state.organizerName || '主催者',
       note,
       config: Object.assign({}, config),
       rows: JSON.parse(JSON.stringify(state.rows)),
       results: {
         totalSales: calc.totalSales,
-        miyaRate: calc.miyaRate,
+        hasOrganizer: calc.hasOrganizer,
+        organizerRate: calc.organizerRate,
+        organizerBack: calc.organizerBack,
         totalBack: calc.totalBack,
         perfBackTotal: calc.perfBackTotal,
         perfPenaltyTotal: calc.perfPenaltyTotal,
-        miyaBack: calc.miyaBack,
         venueNet: calc.venueNet
       }
     };
@@ -1703,7 +1786,7 @@
     document.getElementById('history-count').textContent = `${state.saved.length}件登録済み`;
 
     if (!state.saved.length) {
-      container.innerHTML = '<div style="color:var(--text-faint); text-align:center; padding:24px 10px;">まだ保存されたイベントはありません。開催日を選んで出演者を登録し「💾 保存・更新」を押すとここに日別スケジュールとして蓄積されます。</div>';
+      container.innerHTML = '<div style="color:var(--text-faint); text-align:center; padding:24px 10px;">まだ保存されたイベントはありません。開催日を選んで出演者を登録すると、自動でここに日別スケジュールとして蓄積されます。</div>';
       return;
     }
 
@@ -1714,6 +1797,10 @@
       const dayText = d ? `（${days[d.getDay()]}）` : '';
       const isCurrent = ev.date === state.date;
       const performerCount = (ev.rows || []).filter(r => r.isPerformer && r.name).length;
+      const hasOrg = (ev.organizerMode || 'has_organizer') !== 'no_organizer';
+      const orgName = ev.organizerName || '主催者';
+      const orgRate = Math.round(((ev.results.organizerRate ?? ev.results.miyaRate) || 0) * 100);
+      const orgBackVal = ev.results.organizerBack ?? ev.results.miyaBack ?? 0;
 
       const card = document.createElement('div');
       card.className = `hcard ${isCurrent ? 'open' : ''}`;
@@ -1724,6 +1811,7 @@
           <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <strong>${ev.date}${dayText}</strong>
             ${isCurrent ? '<span style="font-size:10px; background:var(--accent-dim); color:var(--accent); padding:1px 6px; border-radius:4px; font-weight:700;">📍 編集中</span>' : ''}
+            ${hasOrg ? `<span style="font-size:10px; background:rgba(59,130,246,0.15); color:var(--info); padding:1px 6px; border-radius:4px;">👑 主催: ${esc(orgName)}</span>` : '<span style="font-size:10px; background:rgba(16,185,129,0.15); color:var(--success); padding:1px 6px; border-radius:4px;">🎸 主催なし</span>'}
             ${ev.note ? `<span style="color:var(--text); font-size:12px; font-weight:600;">${esc(ev.note)}</span>` : '<span style="color:var(--text-faint); font-size:11px;">(イベント名未設定)</span>'}
             <span style="font-size:11px; color:var(--text-muted);">👥 演者 ${performerCount}組</span>
           </div>
@@ -1742,8 +1830,8 @@
               <div style="font-weight:700; color:var(--success);">¥${fmt(ev.results.perfBackTotal)}</div>
             </div>
             <div style="background:var(--card); padding:8px; border-radius:6px; border:1px solid var(--border);">
-              <div style="font-size:10px; color:var(--text-faint);">@miyaバック (${Math.round((ev.results.miyaRate||0)*100)}%)</div>
-              <div style="font-weight:700; color:var(--accent);">¥${fmt(ev.results.miyaBack)}</div>
+              <div style="font-size:10px; color:var(--text-faint);">${hasOrg ? `${esc(orgName)}バック (${orgRate}%)` : '主催者バック'}</div>
+              <div style="font-weight:700; color:${hasOrg ? 'var(--accent)' : 'var(--text-faint)'};">${hasOrg ? `¥${fmt(orgBackVal)}` : '— (主催なし)'}</div>
             </div>
             <div style="background:var(--card); padding:8px; border-radius:6px; border:1px solid var(--border);">
               <div style="font-size:10px; color:var(--text-faint);">会場手残り</div>
@@ -1752,7 +1840,7 @@
           </div>
           <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
             <button class="btn btn-primary" style="padding:6px 12px; font-size:11px;" onclick="switchEventDate('${ev.date}')">📂 この日を開いて編集</button>
-            <button class="btn btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="copyPerformersFromEvent(${idx})" title="この日の出演者リストを現在の開催日にコピー">📋 演者をコピー</button>
+            <button class="btn btn-secondary" style="padding:6px 12px; font-size:11px;" onclick="copyPerformersFromEvent('${ev.date}')" title="この日の出演者リストを現在の開催日にコピー">📋 演者をコピー</button>
             <button class="btn btn-danger-ghost" style="padding:6px 12px; font-size:11px;" onclick="deleteSavedEvent(${idx})">🗑 削除</button>
           </div>
         </div>
@@ -1761,8 +1849,8 @@
     });
   }
 
-  function copyPerformersFromEvent(idx) {
-    const ev = state.saved[idx];
+  function copyPerformersFromEvent(date) {
+    const ev = state.saved.find(e => e.date === date);
     if (!ev) return;
     if (!confirm(`${ev.date} の出演者リスト（${ev.rows.filter(r=>r.isPerformer).length}組）を現在の開催日（${state.date}）にコピーしますか？\n（枚数は 0 でコピーされます）`)) return;
 
@@ -1806,55 +1894,41 @@
   }
 
   // ─── JSON Backup Export / Import ─────────────────────
-  function exportBackupJSON() {
-    const backupData = {
-      version: 3,
+  function exportAllDataBackup() {
+    const data = {
       exportedAt: new Date().toISOString(),
-      config: config,
       saved: state.saved,
       templates: getPerformerTemplates(),
-      currentDraft: {
-        date: state.date,
-        dayOverride: state.dayOverride,
-        note: state.note,
-        rows: state.rows
-      }
+      config: config
     };
-
-    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const jsonStr = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const todayStr = today().replace(/-/g, '');
     a.href = url;
-    a.download = `nepo_keisan_backup_${todayStr}.json`;
+    a.download = `NEPO_精算データバックアップ_${today()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('📤 全バックアップファイルを保存しました', 'ok');
+    showToast('📦 バックアップJSONを出力しました', 'ok');
   }
 
-  function importBackupJSON(event) {
-    const file = event.target.files && event.target.files[0];
+  function importAllDataBackup(event) {
+    const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
         const data = JSON.parse(e.target.result);
-        if (!data || !data.saved) {
-          throw new Error('バックアップ形式が無効です');
+        if (!data || !Array.isArray(data.saved)) {
+          throw new Error('無効なバックアップファイル形式です');
         }
-        if (!confirm(`バックアップファイルを復元しますか？\n（登録イベント ${data.saved.length}件 が読み込まれます）`)) return;
+        if (!confirm(`バックアップファイルを復元しますか？\n（登録イベント: ${data.saved.length}件、テンプレート: ${(data.templates||[]).length}件）`)) return;
 
         state.saved = data.saved;
         persistSaved();
-
-        if (data.templates) {
-          savePerformerTemplates(data.templates);
-          renderPerformerTemplateList();
-        }
-
+        if (data.templates) savePerformerTemplates(data.templates);
         if (data.config) {
           config = Object.assign({}, DEFAULT_CONFIG, data.config);
           localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
@@ -1948,6 +2022,9 @@
 
     const sheet = document.getElementById('print-sheet');
     const eventTitleHtml = state.note ? `<div style="font-size:14px; font-weight:700; color:#111; margin-bottom:6px;">🎪 ${esc(state.note)}</div>` : '';
+    const orgMetaHtml = hasOrg
+      ? `<strong>形式:</strong> 主催者あり（${esc(orgName)}） ｜ <strong>適用ルール:</strong> ${calc.dt === 'friday' ? '金曜' : '月〜木'}（主催者バック率 ${ratePercent}%）`
+      : `<strong>形式:</strong> 主催なし（ブッキング・演者バックのみ）`;
 
     sheet.innerHTML = `
       <div class="ps-title">精 算 明 細 書</div>
@@ -1957,7 +2034,7 @@
       <div class="ps-meta">
         <div>
           <strong>開催日:</strong> ${dateStr}<br>
-          <strong>適用ルール:</strong> ${calc.dt === 'friday' ? '金曜' : '月〜木'}（@miyaバック率 ${ratePercent}%）
+          ${orgMetaHtml}
         </div>
         <div style="text-align:right;">
           <strong>チケット単価:</strong> 現地 ¥${fmt(config.priceOnsite)} / 配信 ¥${fmt(config.priceStream)}<br>
@@ -1991,10 +2068,11 @@
           <div class="label">演者バック計</div>
           <div class="value">¥${fmt(calc.perfBackTotal)}</div>
         </div>
+        ${hasOrg ? `
         <div class="ps-box accent">
-          <div class="label">@miyaさんバック（${ratePercent}%）</div>
-          <div class="value">¥${fmt(calc.miyaBack)}</div>
-        </div>
+          <div class="label">${esc(orgName)}バック（${ratePercent}%）</div>
+          <div class="value">¥${fmt(calc.organizerBack)}</div>
+        </div>` : ''}
         <div class="ps-box accent wide">
           <div class="label">会場手残り</div>
           <div class="value">¥${fmt(calc.venueNet)}</div>
