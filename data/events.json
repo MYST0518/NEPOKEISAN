@@ -1,8 +1,8 @@
 {
-  "updatedAt": "2026-08-18T03:08:04.333Z",
+  "updatedAt": "2026-08-18T03:08:10.756Z",
   "saved": [
     {
-      "id": 1787022483906,
+      "id": 1787022490266,
       "date": "2026-10-02",
       "dayOverride": "auto",
       "organizerMode": "has_organizer",
@@ -35,7 +35,7 @@
           "isPerformer": true
         },
         {
-          "name": "",
+          "name": "JACKPOT031",
           "onsite": 0,
           "stream": 0,
           "isPerformer": true
